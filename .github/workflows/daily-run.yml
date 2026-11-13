@@ -19,17 +19,29 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Without the publisher key there is nothing to anchor, so do nothing.
+    env:
+      HAS_KEY: ${{ secrets.NEAR_KEYS != '' }}
     steps:
+      - name: Publisher key present?
+        if: env.HAS_KEY != 'true'
+        run: echo "NEAR_KEYS secret is not set; skipping the daily run." && exit 0
       - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
       - uses: pnpm/action-setup@v4
+        if: env.HAS_KEY == 'true'
       - uses: actions/setup-node@v4
+        if: env.HAS_KEY == 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: env.HAS_KEY == 'true'
       - name: Rebuild the thesis for yesterday
+        if: env.HAS_KEY == 'true'
         run: pnpm thesis
       - name: Skip if this day is already anchored
+        if: env.HAS_KEY == 'true'
         id: fresh
         run: |
           AS_OF=$(node -p "require('./data/latest.json').asOf")
