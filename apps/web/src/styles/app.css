@@ -1090,6 +1090,44 @@ input[type="range"] {
   font-size: var(--t-xs);
 }
 
+.datacheck {
+  margin: 18px 0 4px;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+  border-left: 3px solid var(--ink-3);
+}
+
+.datacheck--clean {
+  border-left-color: var(--revenue);
+}
+
+.datacheck--drift {
+  border-left-color: var(--issuance);
+}
+
+.datacheck h3 {
+  font-size: var(--t-md);
+  margin: 0 0 6px;
+}
+
+.datacheck p {
+  margin: 0;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.datacheck table {
+  margin-top: 12px;
+  font-size: var(--t-xs);
+  table-layout: auto;
+}
+
+.datacheck th,
+.datacheck td {
+  padding: 6px 10px 6px 0;
+}
+
 .ok {
   color: var(--revenue-ink);
 }

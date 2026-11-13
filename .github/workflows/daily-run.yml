@@ -1,6 +1,6 @@
 name: Daily run
 
-# Every day: rebuild the thesis for yesterday from raw public data, anchor the
+# Every day: rebuild the thesis for the newest settled day (SETTLE_DAYS back) from raw public data, anchor the
 # run on NEAR testnet, and commit the pinned snapshot, results and THESIS.md.
 # The site reads the newest committed run, so the thesis stays live.
 on:
@@ -37,7 +37,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
         if: env.HAS_KEY == 'true'
-      - name: Rebuild the thesis for yesterday
+      - name: Rebuild the thesis for the newest settled day
         if: env.HAS_KEY == 'true'
         run: pnpm thesis
       - name: Skip if this day is already anchored

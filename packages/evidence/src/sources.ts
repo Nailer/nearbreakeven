@@ -3,6 +3,7 @@
  * Every source is free and needs no key or account, so anyone can re-run this.
  */
 import type { ChainFacts, IntentsDay, L1Day, ProtocolAt, Snapshot } from "./types.js";
+import { canonical } from "./canonical.js";
 
 export const SOURCES = {
   nearblocksDaily: "https://api.nearblocks.io/v1/charts",
@@ -149,13 +150,21 @@ export async function fetchChainFacts(fetcher: Fetcher, pinnedBlock?: number): P
   };
 }
 
-/** The last complete UTC day before `now`. */
-export function lastFullDay(now = new Date()): string {
-  return addDays(now.toISOString().slice(0, 10), -1);
+/**
+ * Days a source keeps revising after the fact. DefiLlama fills in a day's NEAR
+ * Intents fees and revenue over the following days (on 13 Nov 2026 it raised
+ * 12 Nov fees from $16.6K to $257.5K), so a run pins a day only once it has
+ * settled. See `pnpm drift`.
+ */
+export const SETTLE_DAYS = 3;
+
+/** The newest UTC day that has had SETTLE_DAYS to settle. */
+export function settledDay(now = new Date()): string {
+  return addDays(now.toISOString().slice(0, 10), -SETTLE_DAYS);
 }
 
 export interface FetchOptions {
-  /** Last day to include. Defaults to yesterday (UTC). */
+  /** Last day to include. Defaults to the newest settled day (UTC), see SETTLE_DAYS. */
   asOf?: string;
   /** Re-read the chain at this block instead of the latest one. */
   pinnedBlock?: number;
@@ -166,7 +175,7 @@ export interface FetchOptions {
 /** Fetches every source and returns a normalized snapshot. */
 export async function fetchSnapshot(opts: FetchOptions = {}): Promise<Snapshot> {
   const fetcher: Fetcher = opts.fetcher ?? ((u, i) => globalThis.fetch(u, i));
-  const asOf = opts.asOf ?? lastFullDay();
+  const asOf = opts.asOf ?? settledDay();
   const say = opts.onProgress ?? (() => {});
   say("NearBlocks daily stats");
   const nb = await getJson(fetcher, SOURCES.nearblocksDaily);
@@ -183,4 +192,47 @@ export async function fetchSnapshot(opts: FetchOptions = {}): Promise<Snapshot> 
   if (l1.at(-1)?.d !== asOf) throw new Error(`NearBlocks has no row for ${asOf} yet; try an earlier asOf`);
   if (intents.at(-1)?.d !== asOf) throw new Error(`DefiLlama has no NEAR Intents row for ${asOf} yet; try an earlier asOf`);
   return { schema: "nearbreakeven/snapshot@1", asOf, l1, intents, chain };
+}
+
+/** One value a source changed after a snapshot was pinned. */
+export interface Drift {
+  source: "NearBlocks" | "DefiLlama" | "NEAR RPC";
+  day: string;
+  field: string;
+  before: string;
+  after: string;
+}
+
+const show = (v: unknown): string => (v === undefined ? "(missing)" : v === null ? "null" : String(v));
+
+function diffRows<T extends { d: string }>(source: Drift["source"], a: T[], b: T[], out: Drift[]): void {
+  const byDay = new Map(b.map((r) => [r.d, r] as const));
+  const seen = new Set<string>();
+  for (const ra of a) {
+    seen.add(ra.d);
+    const rb = byDay.get(ra.d);
+    if (!rb) {
+      out.push({ source, day: ra.d, field: "row", before: "present", after: "(missing)" });
+      continue;
+    }
+    for (const k of Object.keys(ra) as (keyof T)[]) {
+      if (k === "d") continue;
+      if (ra[k] !== rb[k]) out.push({ source, day: ra.d, field: String(k), before: show(ra[k]), after: show(rb[k]) });
+    }
+  }
+  for (const rb of b) if (!seen.has(rb.d)) out.push({ source, day: rb.d, field: "row", before: "(missing)", after: "present" });
+}
+
+/**
+ * Lists every value that differs between a pinned snapshot and a fresh fetch of
+ * the same day and block. An empty list means the snapshot hashes will match.
+ */
+export function diffSnapshots(pinned: Snapshot, fresh: Snapshot): Drift[] {
+  const out: Drift[] = [];
+  diffRows("NearBlocks", pinned.l1, fresh.l1, out);
+  diffRows("DefiLlama", pinned.intents, fresh.intents, out);
+  const a = canonical(pinned.chain);
+  const b = canonical(fresh.chain);
+  if (a !== b) out.push({ source: "NEAR RPC", day: pinned.asOf, field: "chain facts", before: a, after: b });
+  return out;
 }

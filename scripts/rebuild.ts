@@ -1,7 +1,7 @@
 /**
  * One command rebuilds every number from raw public data:
  *
- *   pnpm thesis                 # pins yesterday (UTC) and the latest NEAR block
+ *   pnpm thesis                 # pins the newest settled day (UTC, SETTLE_DAYS back) and the latest NEAR block
  *   pnpm thesis --as-of 2026-11-12 --block 224351406   # re-run a pinned run exactly
  *   pnpm thesis --from-snapshot data/snapshots/2026-11-12/snapshot.json   # offline
  *

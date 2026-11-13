@@ -1,9 +1,11 @@
 import {
   type ChainAttestation,
   type ChainRun,
+  type Drift,
   LEDGER_CONTRACT,
   type Results,
   computeResults,
+  diffSnapshots,
   fetchSnapshot,
   hashOf,
   txUrl,
@@ -12,34 +14,35 @@ import {
 import { useEffect, useState } from "react";
 import { Hash, useToast, VerdictMark } from "../components/parts";
 import { LedgerFeed } from "../components/LedgerFeed";
-import { type Latest, loadPinnedSnapshot } from "../lib/data";
+import { type Latest, loadPinnedSnapshot, pct } from "../lib/data";
 import { WALLETS } from "../lib/wallets";
 
 /** The wallet libraries are large; load them only on this page, when needed. */
 const walletLib = () => import("../lib/wallet");
 
-type Method = "live" | "snapshot";
 type Step = { label: string; state: "todo" | "doing" | "done" | "failed"; detail?: string };
+
+/** What the public sources say today about the same day and block. */
+type DataCheck = { state: "clean" } | { state: "drift"; drift: Drift[]; live: Results } | { state: "unreachable"; error: string };
 
 interface Outcome {
   run: ChainRun;
-  method: Method;
   snapshotSha256: string;
   resultsSha256: string;
   results: Results;
+  data: DataCheck;
   seconds: number;
 }
 
 const START: Step[] = [
   { label: "Read the anchored run from NEAR", state: "todo" },
-  { label: "Get the data", state: "todo" },
+  { label: "Hash the pinned data file", state: "todo" },
   { label: "Recompute every metric and claim", state: "todo" },
-  { label: "Compare hashes", state: "todo" },
+  { label: "Ask every public source again", state: "todo" },
 ];
 
 export function Verify({ latest }: { latest: Latest }) {
   const toast = useToast();
-  const [method, setMethod] = useState<Method>("live");
   const [steps, setSteps] = useState<Step[]>(START);
   const [running, setRunning] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -79,28 +82,42 @@ export function Verify({ latest }: { latest: Latest }) {
       set(0, { state: "done", detail: `Run #${chainRun.id}, data through ${chainRun.as_of}, mainnet block ${chainRun.source_block.toLocaleString("en-US")}` });
 
       i = 1;
-      set(1, { state: "doing", detail: method === "live" ? "Starting" : "Downloading the pinned snapshot" });
-      const snapshot =
-        method === "live"
-          ? await fetchSnapshot({ asOf: chainRun.as_of, pinnedBlock: chainRun.source_block, onProgress: (s) => set(1, { detail: s }) })
-          : await loadPinnedSnapshot(chainRun.as_of === latest.asOf ? latest : { ...latest, snapshot: `snapshots/${chainRun.as_of}/snapshot.json` });
-      set(1, {
-        state: "done",
-        detail: `${snapshot.l1.length} days of NEAR L1, ${snapshot.intents.length} days of Intents, chain read at block ${snapshot.chain.block.toLocaleString("en-US")}`,
-      });
-
+      set(1, { state: "doing", detail: "Downloading the exact file the run was computed from" });
+      const pinned = await loadPinnedSnapshot(chainRun.as_of === latest.asOf ? latest : { ...latest, snapshot: `snapshots/${chainRun.as_of}/snapshot.json` });
       i = 2;
       set(2, { state: "doing" });
-      const results = await computeResults(snapshot);
+      const results = await computeResults(pinned);
       const resultsSha256 = await hashOf(results);
-      set(2, { state: "done", detail: `Verdict: ${results.verdict}` });
-
-      i = 3;
       const snapOk = results.snapshotSha256 === chainRun.snapshot_sha256;
       const resOk = resultsSha256 === chainRun.results_sha256;
-      set(3, { state: resOk ? "done" : "failed", detail: resOk ? "Your results match the anchored run exactly" : "Your results differ from the anchored run" });
-      if (!snapOk && method === "live") toast("A source revised its history since the run. Try the pinned file to separate data from code.");
-      setOutcome({ run: chainRun, method, snapshotSha256: results.snapshotSha256, resultsSha256, results, seconds: (performance.now() - t0) / 1000 });
+      set(1, {
+        state: snapOk ? "done" : "failed",
+        detail: `${pinned.l1.length} days of NEAR L1, ${pinned.intents.length} days of Intents. ${snapOk ? "Same hash as the one on NEAR" : "Its hash differs from the one on NEAR"}`,
+      });
+      set(2, {
+        state: resOk ? "done" : "failed",
+        detail: resOk ? `Same results hash as the one on NEAR. Verdict: ${results.verdict}` : "Your results differ from the anchored run",
+      });
+
+      i = 3;
+      set(3, { state: "doing", detail: "Starting" });
+      let data: DataCheck;
+      try {
+        const fresh = await fetchSnapshot({ asOf: chainRun.as_of, pinnedBlock: chainRun.source_block, onProgress: (s) => set(3, { detail: s }) });
+        const drift = diffSnapshots(pinned, fresh);
+        data = drift.length === 0 ? { state: "clean" } : { state: "drift", drift, live: await computeResults(fresh) };
+        set(3, {
+          state: "done",
+          detail:
+            drift.length === 0
+              ? "The sources still return exactly the pinned data"
+              : `${drift.length} value${drift.length === 1 ? "" : "s"} revised by the sources since the run; listed below`,
+        });
+      } catch (e) {
+        data = { state: "unreachable", error: e instanceof Error ? e.message : String(e) };
+        set(3, { state: "failed", detail: "A source did not answer. The code check above still stands" });
+      }
+      setOutcome({ run: chainRun, snapshotSha256: results.snapshotSha256, resultsSha256, results, data, seconds: (performance.now() - t0) / 1000 });
     } catch (e) {
       set(i, { state: "failed" });
       setError(e instanceof Error ? e.message : String(e));
@@ -130,7 +147,7 @@ export function Verify({ latest }: { latest: Latest }) {
         run_id: outcome.run.id,
         snapshot_sha256: outcome.snapshotSha256,
         results_sha256: outcome.resultsSha256,
-        method: outcome.method,
+        method: outcome.data.state === "clean" ? "live" : "snapshot",
         note: note.trim() || undefined,
       });
       setTxHash(hash);
@@ -154,28 +171,13 @@ export function Verify({ latest }: { latest: Latest }) {
           <div className="prose">
             <h1>Re-run the thesis</h1>
             <p className="lead">
-              Your browser fetches the same public data, recomputes every number and compares its hashes with the ones anchored on NEAR. Nothing
-              comes from our server. It takes about ten seconds.
+              Your browser checks two things in a few seconds. Code: the pinned data file still hashes to the hash on NEAR, and this code turns it
+              into exactly the anchored results. Data: NearBlocks, DefiLlama and NEAR's archival node still return that same data today. Nothing
+              comes from our server.
             </p>
           </div>
 
-          <fieldset className="choice">
-            <legend>Where the data comes from</legend>
-            <label className={method === "live" ? "is-on" : undefined}>
-              <input type="radio" name="method" checked={method === "live"} onChange={() => setMethod("live")} />
-              <span>
-                <b>Fetch every source again</b>
-                NearBlocks, DefiLlama and NEAR's archival RPC, read at the pinned block. Proves the data and the code.
-              </span>
-            </label>
-            <label className={method === "snapshot" ? "is-on" : undefined}>
-              <input type="radio" name="method" checked={method === "snapshot"} onChange={() => setMethod("snapshot")} />
-              <span>
-                <b>Use the pinned snapshot</b>
-                The exact data file the run used. Proves the code alone, even if a source changes its history later.
-              </span>
-            </label>
-          </fieldset>
+
 
           <button type="button" className="btn btn--primary btn--big" onClick={run} disabled={running}>
             {running ? "Re-running…" : outcome ? "Run it again" : "Start the re-run"}
@@ -202,7 +204,7 @@ export function Verify({ latest }: { latest: Latest }) {
 
           {outcome && (
             <section className={`compare ${resOk ? "compare--ok" : "compare--bad"}`} aria-label="Hash comparison">
-              <h2>{resOk ? "Same numbers, to the last byte." : "Different numbers."}</h2>
+              <h2>{resOk && snapOk ? "Same numbers, to the last byte." : "Different numbers."}</h2>
               <p className="muted">
                 Finished in {outcome.seconds.toFixed(1)} s. Your verdict: <VerdictMark verdict={outcome.results.verdict} />
               </p>
@@ -237,6 +239,8 @@ export function Verify({ latest }: { latest: Latest }) {
                   </tr>
                 </tbody>
               </table>
+
+              <DataCheckNote run={outcome.run} results={outcome.results} data={outcome.data} />
 
               <div className="attest">
                 <h3>Put your re-run on the record</h3>
@@ -296,13 +300,70 @@ export function Verify({ latest }: { latest: Latest }) {
               <code>
                 {`git clone https://github.com/Nailer/nearbreakeven
 cd nearbreakeven && pnpm install
-pnpm verify            # re-fetch and compare
-pnpm thesis            # rebuild everything for yesterday`}
+pnpm verify            # code check + data check
+pnpm thesis            # rebuild from raw data`}
               </code>
             </pre>
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+/** The second check: have the public sources changed the data since the run was pinned? */
+function DataCheckNote({ run, results, data }: { run: ChainRun; results: Results; data: DataCheck }) {
+  if (data.state === "clean") {
+    return (
+      <div className="datacheck datacheck--clean">
+        <h3>The sources agree too</h3>
+        <p>
+          NearBlocks, DefiLlama and NEAR's archival node still return exactly the data pinned on {run.as_of}, so a fully live re-run gives the same
+          hashes.
+        </p>
+      </div>
+    );
+  }
+  if (data.state === "unreachable") {
+    return (
+      <div className="datacheck">
+        <h3>Could not ask the sources again</h3>
+        <p className="muted">{data.error}. Public APIs rate-limit now and then; run it again in a minute.</p>
+      </div>
+    );
+  }
+  const before = results.metrics.breakeven.coverage30;
+  const after = data.live.metrics.breakeven.coverage30;
+  return (
+    <div className="datacheck datacheck--drift">
+      <h3>The sources have revised {data.drift.length === 1 ? "one value" : `${data.drift.length} values`} since the run</h3>
+      <p>
+        Aggregators keep filling in recent days after the fact. The anchored run keeps the data it was computed from; this is what changed since. On
+        today's data the verdict is <b>{data.live.verdict}</b> and 30-day coverage is <b>{pct(after, 2)}</b> (anchored {pct(before, 2)}).
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Day</th>
+            <th>Field</th>
+            <th>Pinned</th>
+            <th>Today</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.drift.slice(0, 12).map((d) => (
+            <tr key={`${d.source}-${d.day}-${d.field}`}>
+              <td>{d.source}</td>
+              <td>{d.day}</td>
+              <td>{d.field}</td>
+              <td className="mono">{d.before.length > 24 ? "…" : d.before}</td>
+              <td className="mono">{d.after.length > 24 ? "…" : d.after}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {data.drift.length > 12 && <p className="muted">And {data.drift.length - 12} more. `pnpm drift` lists them all.</p>}
+    </div>
   );
 }

@@ -17,7 +17,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "biome lint .",
     "dev": "pnpm --filter web dev",
-    "anchor": "tsx scripts/anchor.ts"
+    "anchor": "tsx scripts/anchor.ts",
+    "drift": "tsx scripts/drift.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
