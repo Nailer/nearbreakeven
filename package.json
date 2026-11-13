@@ -1,0 +1,33 @@
+{
+  "name": "nearbreakeven",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NEAR Breakeven: an evidence-first investment thesis for NEAR that anyone can rebuild with one command and verify on NEAR.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "thesis": "tsx scripts/rebuild.ts",
+    "verify": "tsx scripts/verify.ts",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome lint .",
+    "dev": "pnpm --filter web dev"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "24.9.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "@nearbreakeven/evidence": "workspace:*"
+  }
+}

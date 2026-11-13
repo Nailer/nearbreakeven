@@ -1,0 +1,9 @@
+{
+  "asOf": "2026-11-12",
+  "block": 224351751,
+  "snapshotSha256": "784a00b915b0fd20b1c06abc6f826408f68e367b1d8dec7f23d247548c053be3",
+  "resultsSha256": "7ef91d4c95a119a3a5c081e768d14fc66ef97029d356c76d5761043b6357f179",
+  "verdict": "HOLDS",
+  "snapshot": "snapshots/2026-11-12/snapshot.json",
+  "results": "snapshots/2026-11-12/results.json"
+}
