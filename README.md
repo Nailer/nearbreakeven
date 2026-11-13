@@ -246,7 +246,7 @@ The demo video is in the project's post on X: _link added when published_.
 
 ## Also by the same author at NEAR HACKATHON
 
-**[AccountKit](https://github.com/Nailer/accountkit)**: a TypeScript SDK for House of Stake Top Level Accounts (NFTs that are real NEAR accounts), with the Clubhouse demo app. The two projects are independent: they share no code paths, contracts or deployments.
+**[AccountKit](https://github.com/Nailer/accountkit)** ([live](https://accountkit.vercel.app)): a TypeScript SDK for House of Stake Top Level Accounts (NFTs that are real NEAR accounts), with the Clubhouse demo app. The two projects are independent: they share no runtime code, contracts or deployments (the wallet helper above was copied once and adapted, not imported).
 
 ## License
 
