@@ -11,7 +11,7 @@
 //!   hashes, so "my numbers matched" is decided on chain, not claimed.
 
 use near_sdk::store::{LookupMap, Vector};
-use near_sdk::{env, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault};
+use near_sdk::{env, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, Promise};
 
 /// Deposit an attestation must attach. It pays for the attestation's storage.
 pub const ATTEST_DEPOSIT: NearToken = NearToken::from_millinear(10);
@@ -178,6 +178,7 @@ impl Ledger {
     }
 
     /// Records that the caller re-ran `run_id` and got these hashes. One attestation per account per run.
+    /// Anything attached above `ATTEST_DEPOSIT` is sent back to the caller.
     #[payable]
     pub fn attest(
         &mut self,
@@ -225,6 +226,10 @@ impl Ledger {
         list.push(index);
         self.run_attestations.insert(run_id, list);
         self.seen.insert(key, index);
+        let excess = env::attached_deposit().saturating_sub(ATTEST_DEPOSIT);
+        if !excess.is_zero() {
+            Promise::new(att.by.clone()).transfer(excess).detach();
+        }
         emit(
             "run_attested",
             format!(
@@ -281,7 +286,7 @@ impl Ledger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::test_utils::{get_logs, VMContextBuilder};
+    use near_sdk::test_utils::{get_created_receipts, get_logs, VMContextBuilder};
     use near_sdk::testing_env;
 
     const H1: &str = "784a00b915b0fd20b1c06abc6f826408f68e367b1d8dec7f23d247548c053be3";
@@ -400,6 +405,25 @@ mod tests {
         publish(&mut l, "2026-11-12");
         ctx("judge.testnet", NearToken::from_millinear(1));
         l.attest(0, H1.into(), H2.into(), "snapshot".into(), None);
+    }
+
+    #[test]
+    fn refunds_anything_above_the_storage_deposit() {
+        let mut l = ledger();
+        publish(&mut l, "2026-11-12");
+        ctx("judge.testnet", ATTEST_DEPOSIT);
+        l.attest(0, H1.into(), H2.into(), "snapshot".into(), None);
+        assert!(get_created_receipts().is_empty(), "an exact deposit leaves nothing to refund");
+        ctx("generous.testnet", NearToken::from_near(1));
+        l.attest(0, H1.into(), H2.into(), "snapshot".into(), None);
+        let receipts = get_created_receipts();
+        assert_eq!(receipts.len(), 1);
+        assert_eq!(receipts[0].receiver_id, acct("generous.testnet"));
+        let refund = NearToken::from_near(1).saturating_sub(ATTEST_DEPOSIT).as_yoctonear();
+        assert!(matches!(
+            receipts[0].actions[0],
+            near_sdk::mock::MockAction::Transfer { deposit, .. } if deposit.as_yoctonear() == refund
+        ));
     }
 
     #[test]

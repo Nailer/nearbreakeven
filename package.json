@@ -18,11 +18,16 @@
     "lint": "biome lint .",
     "dev": "pnpm --filter web dev",
     "anchor": "tsx scripts/anchor.ts",
-    "drift": "tsx scripts/drift.ts"
+    "drift": "tsx scripts/drift.ts",
+    "ledger": "tsx scripts/ledger-status.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
+    ],
+    "ignoredBuiltDependencies": [
+      "@biomejs/biome",
+      "secp256k1"
     ]
   },
   "devDependencies": {

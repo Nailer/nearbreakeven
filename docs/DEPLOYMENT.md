@@ -23,6 +23,14 @@ near contract deploy ledger.nearbreakeven.testnet use-file target/near/breakeven
   prepaid-gas '30 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-legacy-keychain send
 ```
 
+Upgrading the code later keeps every stored run and attestation (the state layout must not change):
+
+```bash
+near contract deploy ledger.nearbreakeven.testnet use-file target/near/breakeven_ledger.wasm \
+  without-init-call network-config testnet sign-with-legacy-keychain send
+pnpm ledger    # prints the run count and the latest run, read back from NEAR
+```
+
 `--no-wasmopt`: Rust 1.87+ emits WebAssembly bulk-memory instructions that the bundled `wasm-opt` validator rejects. NEAR testnet accepts them.
 
 Accounts: `nearbreakeven.testnet` (publisher, owner), `ledger.nearbreakeven.testnet` (contract), `rerun.nearbreakeven.testnet` (command-line attester for the demo). All were funded from the public testnet faucet.
@@ -30,7 +38,7 @@ Accounts: `nearbreakeven.testnet` (publisher, owner), `ledger.nearbreakeven.test
 ## Runs
 
 ```bash
-pnpm thesis    # build the run for yesterday
+pnpm thesis    # build the run for the newest settled day (3 days back)
 pnpm anchor    # publish it (owner key)
 ```
 
