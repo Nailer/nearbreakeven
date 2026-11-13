@@ -5,13 +5,13 @@
  *   pnpm thesis --as-of 2026-11-12 --block 224351406   # re-run a pinned run exactly
  *   pnpm thesis --from-snapshot data/snapshots/2026-11-12/snapshot.json   # offline
  *
- * Writes data/snapshots/<asOf>/{snapshot,results}.json and data/latest.json,
+ * Writes data/snapshots/<asOf>/{snapshot,results}.json, data/latest.json and THESIS.md,
  * and copies them to apps/web/public/data for the dashboard.
  */
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { canonical, computeResults, fetchSnapshot, hashOf, type Snapshot } from "@nearbreakeven/evidence";
+import { canonical, computeResults, fetchSnapshot, hashOf, type Snapshot, thesisMarkdown } from "@nearbreakeven/evidence";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const arg = (name: string) => {
@@ -49,6 +49,7 @@ const latest = {
   results: `snapshots/${snapshot.asOf}/results.json`,
 };
 writeFileSync(join(root, "data", "latest.json"), `${JSON.stringify(latest, null, 2)}\n`);
+writeFileSync(join(root, "THESIS.md"), thesisMarkdown(results, resultsSha256));
 
 const pub = join(root, "apps", "web", "public", "data", "snapshots", snapshot.asOf);
 mkdirSync(pub, { recursive: true });
