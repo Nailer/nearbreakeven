@@ -16,7 +16,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "biome lint .",
-    "dev": "pnpm --filter web dev"
+    "dev": "pnpm --filter web dev",
+    "anchor": "tsx scripts/anchor.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -28,6 +29,7 @@
     "@types/node": "24.9.1",
     "tsx": "4.20.6",
     "typescript": "5.9.3",
-    "@nearbreakeven/evidence": "workspace:*"
+    "@nearbreakeven/evidence": "workspace:*",
+    "near-api-js": "7.3.1"
   }
 }
