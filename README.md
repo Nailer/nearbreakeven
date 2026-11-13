@@ -41,7 +41,7 @@ Every number above is produced by `pnpm thesis` from three free public sources. 
 
 > Research for a hackathon, not investment advice.
 
-## What we found that others miss
+## What the data shows
 
 1. **The headline metric is broken.** Daily active accounts, the number most NEAR dashboards lead with, fell 97% while NEAR's price rose 279% from its February 2026 low. Over the last 12 months, monthly changes in activity and price have a correlation of **−0.31**. Gas paid per active account rose **6×**, which fits a network that lost airdrop and bot traffic. Activity is the wrong scoreboard.
 2. **NEAR's revenue moved off its own chain.** NEAR Intents earns NEAR **14×** more than all L1 gas, and the money comes from swaps between *other* chains, so activity on NEAR's own chain no longer measures it. NEAR Breakeven measures it against the cost of issuance, with four tests that can fail.
