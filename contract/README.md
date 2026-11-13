@@ -12,7 +12,7 @@ The NEAR contract behind NEAR Breakeven. Deployed on testnet at
 Every write emits a NEP-297 event (`EVENT_JSON:{"standard":"nearbreakeven",...}`).
 
 ```bash
-cargo test                                   # 10 unit tests
+cargo test                                   # 11 unit tests
 cargo near build non-reproducible-wasm --locked --no-wasmopt
 ```
 

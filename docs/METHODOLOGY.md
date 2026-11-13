@@ -65,12 +65,16 @@ Verdict: all pass → **HOLDS**; one fails → **UNDER PRESSURE**; two or more �
 
 Thresholds were fixed on 13 Nov 2026, after a first look at the data and before the first run was anchored. They are deliberately not tuned per run.
 
-## 6. Anchoring and attestations
+## 6. What it is worth to NEAR
+
+[`value.ts`](../packages/evidence/src/value.ts) prices the levers from the same results, with no new data: revenue per \$1M of volume (take rate × \$1M), coverage points per extra \$100M of daily volume and per extra basis point (extra daily revenue ÷ daily value of new NEAR), points lost per \$1 on price (at the value-weighted price new NEAR was minted at), and the yearly run rates (30-day sums × 365 ÷ 30). A test checks that the gap and the breakeven volume add back up to the thesis's own coverage and breakeven numbers.
+
+## 7. Anchoring and attestations
 
 See the contract: [`contract/src/lib.rs`](../contract/src/lib.rs). Runs are append-only with strictly increasing dates. Attestations carry the attester's two hashes; the contract computes `results_matches` and `snapshot_matches` itself.
 
-## 7. Known sensitivities
+## 8. Known sensitivities
 
 - **Price.** Coverage uses the dollar value of issuance, so a price rally lowers coverage at constant revenue.
 - **Revenue timing.** DefiLlama records revenue on sweep days; single months can be near zero (June 2025) or spike. 90-day windows are the basis for C2 and C3.
-- **Source revisions.** A source that revises a past day changes the snapshot hash of a live re-run. The pinned snapshot in `data/snapshots/` stays the reference.
+- **Source revisions.** DefiLlama keeps filling in a day's NEAR Intents fees and revenue for a few days (12 Nov 2026 fees went from \$16.6K to \$257.5K a day later). So a run pins a day only once it is `SETTLE_DAYS` (3) old, and `pnpm verify` keeps two answers apart: the code check (pinned file → anchored hashes) and the data check (every value the sources revised since, from `diffSnapshots`, with the verdict on today's data). `pnpm drift` prints the revisions alone. Run #0 was pinned before the settle rule; its five revised values move 30-day coverage from 15.66% to 15.71%.

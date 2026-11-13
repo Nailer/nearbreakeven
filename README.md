@@ -10,6 +10,7 @@
 <p align="center">
   <a href="https://nearbreakeven.vercel.app"><b>Live site</b></a> ·
   <a href="https://nearbreakeven.vercel.app/verify">Re-run it in your browser</a> ·
+  <a href="https://nearbreakeven.vercel.app/for-near">What it is worth to NEAR</a> ·
   <a href="THESIS.md">THESIS.md</a> ·
   <a href="https://testnet.nearblocks.io/address/ledger.nearbreakeven.testnet">Ledger contract</a> ·
   <a href="#demo-video">Demo video</a>
@@ -43,7 +44,7 @@ Every number above is produced by `pnpm thesis` from three free public sources. 
 ## What we found that others miss
 
 1. **The headline metric is broken.** Daily active accounts, the number most NEAR dashboards lead with, fell 97% while NEAR's price rose 279% from its February 2026 low. Over the last 12 months, monthly changes in activity and price have a correlation of **−0.31**. Gas paid per active account rose **6×**, which fits a network that lost airdrop and bot traffic. Activity is the wrong scoreboard.
-2. **NEAR's revenue moved off its own chain.** NEAR Intents earns NEAR **14×** more than all L1 gas, and the money comes from swaps between *other* chains. No other L1 has this shape, and no public dashboard tracks it against issuance with tests that can fail.
+2. **NEAR's revenue moved off its own chain.** NEAR Intents earns NEAR **14×** more than all L1 gas, and the money comes from swaps between *other* chains, so activity on NEAR's own chain no longer measures it. NEAR Breakeven measures it against the cost of issuance, with four tests that can fail.
 3. **Most "evidence" in this track cannot be re-run by a judge.** The suggested sources need a Google Cloud bill (BigQuery) or a partner key (Intents Explorer). NEAR Breakeven uses only keyless sources and proves reproducibility *on NEAR*: the snapshot and results hashes of every run are anchored in an append-only contract, and the contract itself checks anyone's re-run.
 
 ## Check it in 5 minutes
@@ -51,11 +52,12 @@ Every number above is produced by `pnpm thesis` from three free public sources. 
 | Do this | You should see |
 |---|---|
 | Open **https://nearbreakeven.vercel.app** | The verdict, the coverage tape (15.7%) and a live card reading run #0 from `ledger.nearbreakeven.testnet` |
-| Go to **Re-run and verify**, press **Start the re-run** | Your browser fetches NearBlocks, DefiLlama and NEAR's archival RPC, recomputes everything in about 3 s, and shows **Same numbers, to the last byte**: both hashes match the anchored ones |
+| Go to **Re-run and verify**, press **Start the re-run** | In about 5 s your browser hashes the pinned data file, recomputes every number and shows **Same numbers, to the last byte** (both hashes match the ones on NEAR). Then it asks NearBlocks, DefiLlama and NEAR's archival RPC again and lists any value they revised since (for run #0: five DefiLlama values from 8 to 12 Nov; verdict unchanged) |
 | (Optional) connect a testnet wallet and press **Record my re-run on NEAR** | A transaction to `attest`; the contract stores `results_matches: true` under your account, and the live feed shows it |
-| `git clone https://github.com/Nailer/nearbreakeven && cd nearbreakeven && pnpm install && pnpm verify` | The CLI reads run #0 from NEAR, re-fetches every source at the pinned block, and prints `MATCH` twice |
-| `pnpm thesis` | Rebuilds every number for yesterday from raw data, rewrites `THESIS.md`, prints the four tests and the verdict |
-| `pnpm test` and `cd contract && cargo test` | 29 TypeScript tests and 10 contract tests pass, including one that reproduces anchored run #0 byte for byte |
+| `git clone https://github.com/Nailer/nearbreakeven && cd nearbreakeven && pnpm install && pnpm verify` | The CLI reads run #0 from NEAR, prints `MATCH` for the data hash and the results hash (exit code 0), then re-fetches every source at the pinned block and lists what the sources revised since, with the verdict on today's data |
+| `pnpm thesis` | Rebuilds every number from raw data for the newest settled day (3 days back), rewrites `THESIS.md`, prints the four tests and the verdict |
+| Open **https://nearbreakeven.vercel.app/for-near** | What each lever is worth to NEAR (per \$1M swapped, per \$100M a day of volume, per basis point), who uses the tracker, and how it pays for itself |
+| `pnpm test` and `cd contract && cargo test` | 36 TypeScript tests and 11 contract tests pass, including one that reproduces anchored run #0 byte for byte |
 
 No account, API key or wallet is needed for any step except the optional attestation.
 
@@ -87,7 +89,7 @@ flowchart LR
   H2 --> T["THESIS.md<br/>and the website"]
 ```
 
-**1. Pin.** A run picks a day (`asOf`, yesterday in UTC) and a NEAR mainnet block. It fetches the NearBlocks daily series and DefiLlama's NEAR Intents series up to that day, and reads the protocol's inflation parameters, the total supply and the Intents buyback wallet from an archival node *at that block*. Re-reading the same block always returns the same values.
+**1. Pin.** A run picks a day (`asOf`, the newest UTC day that is at least 3 days old, so the sources have settled) and a NEAR mainnet block. It fetches the NearBlocks daily series and DefiLlama's NEAR Intents series up to that day, and reads the protocol's inflation parameters, the total supply and the Intents buyback wallet from an archival node *at that block*. Re-reading the same block always returns the same values.
 
 **2. Normalize and hash.** Raw responses become plain rows with exact units (yoctoNEAR is converted with integer arithmetic, dollars are rounded to cents). The snapshot is serialized as canonical JSON (sorted keys, no whitespace) and hashed with SHA-256 through WebCrypto, which gives identical bytes in Node and in every browser.
 
@@ -108,22 +110,25 @@ sequenceDiagram
   participant W as Judge's NEAR wallet
   J->>L: latest_run() (view, no key)
   L-->>J: run #0: asOf, pinned block, both hashes, verdict
+  J->>J: hash the pinned data file → compute → hash
+  J->>J: compare with the anchored hashes (code check: MATCH / DIFFERENT)
   J->>S: fetch every series up to asOf; read chain at the pinned block
   S-->>J: raw data
-  J->>J: normalize → hash → compute → hash
-  J->>J: compare with the anchored hashes (MATCH / DIFFERENT)
+  J->>J: diff against the pinned file (data check: every revised value)
   J->>W: attest(run 0, my hashes) + 0.01 NEAR storage
   W->>L: signed transaction
   L->>L: results_matches = (mine == anchored)
   L-->>J: attestation stored, event emitted
 ```
 
-### Two ways to re-run, two things proven
+### One re-run, two separate checks
 
-| Method | Data comes from | A match proves | A mismatch means |
+| Check | Data comes from | A match proves | A mismatch means |
 |---|---|---|---|
-| **Live** (default) | Every source fetched again, chain read at the pinned block | The data *and* the code | A source revised its history, or the code changed |
-| **Pinned snapshot** | The exact file the run used ([`data/snapshots/`](data/snapshots)) | The code alone | The code changed |
+| **Code** (decides the exit code and the on-chain `results_matches`) | The exact file the run used ([`data/snapshots/`](data/snapshots)), whose hash must equal the anchored data hash | The anchored results come from that data and this code | The code changed |
+| **Data** | Every source fetched again, chain read at the pinned block | The sources still serve the same history | A source revised a value; each one is listed (`pnpm drift`) with the verdict on today's data |
+
+Aggregators keep filling in recent days. On 13 Nov 2026 DefiLlama raised the 12 Nov NEAR Intents fees from \$16.6K to \$257.5K, after run #0 was pinned. So runs now pin a day only once it is 3 days old (`SETTLE_DAYS`), and the re-run reports drift instead of hiding it. For run #0 the revisions move 30-day coverage from 15.66% to 15.71%; the verdict stays HOLDS.
 
 ### Where every number comes from
 
@@ -157,6 +162,42 @@ The thresholds were set on 13 Nov 2026 after a first look at the data, and befor
 
 **The evidence against is part of the thesis**, not a footnote: one quarter is a thin base for C3; buybacks are not burns (bought NEAR stays in total supply); price sits in the denominator; revenue arrives in lumps; the users may really be gone; the take rate can be competed away. Each is spelled out with numbers in [THESIS.md](THESIS.md#evidence-against).
 
+## What it is worth to NEAR
+
+At the last 30 days' pace NEAR Intents earns NEAR about **\$22.3M a year** against **\$142.7M a year** of new NEAR. The [For NEAR page](https://nearbreakeven.vercel.app/for-near) prices each lever from the anchored run ([`value.ts`](packages/evidence/src/value.ts), tested):
+
+| Lever | Change | Effect on coverage (15.7% today) |
+|---|---|---|
+| Intents volume | +\$100M a day (today \$125.8M) | +12.4 points (\$48.7K a day; NEAR keeps \$487 of each \$1M swapped) |
+| Take rate | +1 basis point (today 4.87) | +3.2 points (\$12.6K a day) |
+| Issuance | halved again (it was halved at the end of October 2025) | +15.7 points |
+| NEAR price | +\$1 | −2.9 points (88,704 more dollars of issuance a day) |
+
+These are arithmetic on one run, not forecasts. They give House of Stake voters, investors and the NEAR Intents team one shared, checkable unit for what a proposal or a growth target is worth.
+
+## Business model and sustainability
+
+The tracker stays free; paid products sit on top and every one settles on NEAR. Prices for the planned rows are not set.
+
+| What | Who pays | What NEAR gets | Status |
+|---|---|---|---|
+| The NEAR thesis, dashboard and data feed | Nobody; a public good funded by ecosystem grants (House of Stake, NEAR Foundation) | A checkable investment case for NEAR | Live |
+| Attestations on the ledger | Each attester, 0.01 NEAR for their own storage | Transactions and NEAR locked for storage; no cost to us per user | Live on testnet |
+| Evidence ledger for other theses | Funds, DAOs and research desks that anchor their own claims and kill criteria on NEAR mainnet, per run, in NEAR | Mainnet transactions, NEAR locked for storage, NEAR bought to pay | Planned |
+| Claim alerts | Subscribers, when a claim flips or coverage crosses a level, paying from any chain through NEAR Intents | Each payment pays NEAR's Intents fee, so the product adds to the metric it tracks | Planned |
+
+Running costs today are close to zero: a static site, keyless public APIs, a free GitHub Action and testnet gas.
+
+## Use the data
+
+Every run is plain JSON with a stable schema (`nearbreakeven/results@1`), free and keyless:
+
+```bash
+curl https://raw.githubusercontent.com/Nailer/nearbreakeven/main/data/latest.json                        # newest run: day, block, hashes, verdict
+curl https://raw.githubusercontent.com/Nailer/nearbreakeven/main/data/snapshots/2026-11-12/results.json  # every metric, claim and month
+near contract call-function as-read-only ledger.nearbreakeven.testnet latest_run json-args {} network-config testnet now  # the same run, from NEAR
+```
+
 ## Use cases
 
 - **Investors and judges** check a thesis instead of trusting it: one click re-runs every number, and the result is recorded under their own NEAR account.
@@ -178,10 +219,10 @@ The thresholds were set on 13 Nov 2026 after a first look at the data, and befor
 | | Status |
 |---|---|
 | Data | Real mainnet data from NearBlocks, DefiLlama and NEAR's archival RPC, through 12 Nov 2026 |
-| Ledger contract | Deployed on NEAR **testnet** at `ledger.nearbreakeven.testnet` ([code](contract/src/lib.rs)); run #0 anchored |
+| Ledger contract | Deployed on NEAR **testnet** at `ledger.nearbreakeven.testnet` ([code](contract/src/lib.rs)); run #0 anchored. Code upgraded once, on 13 Nov 2026, to refund deposits above 0.01 NEAR ([transaction](https://testnet.nearblocks.io/txns/5aPe4rf55FmLbA11n7AKJT5ar8GjSt83XdeLkJ1bUWXs)); the stored runs and attestations were kept. Who can upgrade it, and how a mainnet ledger would lock that: [SECURITY.md](docs/SECURITY.md) |
 | Re-runs | Two re-runs of run #0 recorded on chain, both `results_matches: true`: one from the command line (`rerun.nearbreakeven.testnet`) and one from a real Meteor wallet in the browser (`itup.testnet`, [transaction](https://testnet.nearblocks.io/txns/2guJAijVEZ3Hgn83R6gM8sEdM74kPvR5Zzk6CP7aKpYB)) |
 | Live site | https://nearbreakeven.vercel.app, fully static: the browser does all the work, there is no backend to trust |
-| Daily runs | A GitHub Action rebuilds the thesis every day, anchors the new run and commits the data, using the publisher's testnet key from the `NEAR_KEYS` repository secret; the site reads the newest committed run |
+| Daily runs | A GitHub Action rebuilds the thesis every day for the newest settled day, anchors the new run and commits the data, using the publisher's testnet key from the `NEAR_KEYS` repository secret; the site reads the newest committed run. Because of the 3-day settle rule, the first daily anchor after run #0 lands on 16 Nov 2026 (data through 13 Nov) |
 | Mainnet | The ledger runs on testnet (hackathon rule Q-010 allows it). The data it describes is mainnet |
 
 ### Limits we state up front
@@ -194,10 +235,10 @@ The thresholds were set on 13 Nov 2026 after a first look at the data, and befor
 
 ```
 packages/evidence/   The engine: sources, normalization, canonical hashing, metrics, claims, thesis text, ledger client.
-                     The same code runs in Node (CLI) and in the browser (site). 29 tests with the web app.
-contract/            breakeven-ledger: NEAR smart contract (Rust, near-sdk 5.29). 10 unit tests.
-apps/web/            The site (React 19, Vite 7): thesis in brief, evidence, full thesis, re-run and verify.
-scripts/             thesis (rebuild), verify (re-run + optional attest), anchor (publish a run), latest-anchored.
+                     The same code runs in Node (CLI) and in the browser (site). 36 tests with the web app.
+contract/            breakeven-ledger: NEAR smart contract (Rust, near-sdk 5.29). 11 unit tests.
+apps/web/            The site (React 19, Vite 7): thesis in brief, evidence, full thesis, for NEAR, re-run and verify.
+scripts/             thesis (rebuild), verify (code + data check, optional attest), drift, anchor (publish a run), ledger, latest-anchored.
 data/                Pinned snapshots and results of every run, plus latest.json.
 THESIS.md            Generated by pnpm thesis. Never edited by hand.
 docs/                METHODOLOGY.md, SECURITY.md, DEPLOYMENT.md.
@@ -210,10 +251,12 @@ Requires Node 22+ and pnpm 10.
 
 ```bash
 pnpm install
-pnpm thesis                          # rebuild every number for yesterday from raw public data
+pnpm thesis                          # rebuild every number from raw public data (newest settled day)
 pnpm thesis --as-of 2026-11-12 --block 224351751   # re-run a pinned run exactly
-pnpm verify                          # compare a fresh re-run with the run anchored on NEAR
-pnpm verify --snapshot               # same, from the pinned snapshot (offline data)
+pnpm verify                          # code check against the run on NEAR, then list what the sources revised since
+pnpm verify --snapshot               # code check only
+pnpm drift                           # every value the sources revised since the latest pinned snapshot
+pnpm ledger                          # run count and latest run, read from NEAR
 pnpm verify --attest you.testnet     # also record the result on chain (testnet key in ~/.near-credentials)
 pnpm dev                             # the site at http://localhost:5174
 pnpm test && pnpm typecheck && pnpm lint
@@ -227,7 +270,7 @@ cd contract && cargo test            # contract tests
 | Method | Who | Does |
 |---|---|---|
 | `publish_run(as_of, source_block, snapshot_sha256, results_sha256, verdict, claims, metrics, code)` | owner | Appends a run. Dates must strictly increase. Validates hashes, verdict and claim count. |
-| `attest(run_id, snapshot_sha256, results_sha256, method, note?)` | anyone, 0.01 NEAR for storage | Stores the attester's hashes and the contract's own comparison: `results_matches`, `snapshot_matches`. One per account per run. |
+| `attest(run_id, snapshot_sha256, results_sha256, method, note?)` | anyone, 0.01 NEAR for storage (anything above is refunded) | Stores the attester's hashes and the contract's own comparison: `results_matches`, `snapshot_matches`. One per account per run. |
 | `latest_run`, `get_run`, `list_runs`, `list_attestations`, `get_attestation`, `run_count`, `get_owner` | view | Read the ledger |
 
 Each write emits a NEP-297 event (`EVENT_JSON:{"standard":"nearbreakeven",...}`).
