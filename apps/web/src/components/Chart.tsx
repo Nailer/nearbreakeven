@@ -102,7 +102,7 @@ export function Chart({ labels, series, format, height = 240, reference, marker,
           </g>
         ))}
         {labels.map((l, i) =>
-          i % labelEvery === 0 || i === n - 1 ? (
+          (i % labelEvery === 0 && n - 1 - i >= labelEvery * 0.6) || i === n - 1 ? (
             <text key={l} x={x(i)} y={height - 6} className="chart-tick" textAnchor={i === n - 1 ? "end" : i === 0 ? "start" : "middle"}>
               {l}
             </text>

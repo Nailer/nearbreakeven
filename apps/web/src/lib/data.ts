@@ -64,6 +64,7 @@ export function usd(x: number, digits = 2): string {
   if (a >= 1e9) return `$${(x / 1e9).toFixed(digits)}B`;
   if (a >= 1e6) return `$${(x / 1e6).toFixed(digits)}M`;
   if (a >= 1e3) return `$${(x / 1e3).toFixed(digits === 2 ? 1 : digits)}K`;
+  if (a === 0) return "$0";
   return `$${x.toFixed(a < 1 ? 4 : 0)}`;
 }
 
