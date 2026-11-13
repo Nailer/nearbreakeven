@@ -285,7 +285,7 @@ All code in this repository was written on 13 Nov 2026, during NEAR HACKATHON (r
 
 ## Demo video
 
-The demo video is in the project's post on X: _link added when published_.
+The demo video (1:59, with subtitles) is in the project's post on X: https://x.com/EmmanuelAje7/status/2121362415396761858. It shows the loophole in the usual NEAR scoreboard, the thesis, a re-run in the browser, a real Meteor wallet attestation on testnet and the transaction on NearBlocks.
 
 ## Also by the same author at NEAR HACKATHON
 
