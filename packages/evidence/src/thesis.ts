@@ -45,9 +45,7 @@ export function thesisDoc(r: Results): ThesisDoc {
       `${b.revenueMultiple}× all the gas paid on NEAR L1, and NEAR uses it to buy NEAR back. The right scoreboard for NEAR is no longer active accounts. ` +
       `It is coverage: how much of the value of newly issued NEAR that revenue pays for. Coverage is ${p(b.coverage30)} over 30 days and rose from ${p(b.coveragePrev90)} to ${p(b.coverage90)} quarter on quarter.`,
     claim:
-      `Long-term, NEAR's value depends on Intents revenue catching up with issuance, not on L1 activity. ` +
-      `At today's take rate (${m.intents.takeRateBps.toFixed(2)} bps) and price, Intents needs about ${usd(b.breakevenDailyVolume)} of volume a day to pay for all new NEAR: ${b.volumeMultipleNeeded}× today's ${usd(b.currentDailyVolume)}. ` +
-      `If last quarter's growth in coverage repeated, that happens in ${b.quartersToBreakeven === null ? "no finite time" : `${b.quartersToBreakeven} quarters`}.`,
+      `Long-term, NEAR's value depends on Intents revenue catching up with issuance, not on L1 activity. At today's take rate (${m.intents.takeRateBps.toFixed(2)} bps) and price, Intents needs about ${usd(b.breakevenDailyVolume)} of volume a day to pay for all new NEAR: ${b.volumeMultipleNeeded}× today's ${usd(b.currentDailyVolume)}. If last quarter's growth in coverage repeated, that happens in ${b.quartersToBreakeven === null ? "no finite time" : `${b.quartersToBreakeven} quarters`}.`,
     forPoints: [
       {
         claim: "C1",
@@ -123,7 +121,7 @@ export function thesisDoc(r: Results): ThesisDoc {
       "Sources: NearBlocks daily chain stats, DefiLlama's NEAR Intents volume, fees and revenue, and NEAR mainnet itself through a public archival RPC. All free, none needs a key.",
       `Windows: the last 30 days through ${r.asOf} (UTC), the last 90 days and the 90 before. The L1 peak is the highest 30-day average since January 2024.`,
       "Coverage = Intents revenue ÷ Σ(new NEAR each day × that day's price). New NEAR each day is the change in total supply, which already nets out burned gas.",
-      `The four tests and their thresholds were fixed on 13 Nov 2026 after a first look at the data, before the first run was anchored on NEAR, and they do not change between runs.`,
+      "The four tests and their thresholds were fixed on 13 Nov 2026 after a first look at the data, before the first run was anchored on NEAR, and they do not change between runs.",
       "Every run pins a NEAR block. Re-reading the chain at that block and the sources up to the same day gives the same snapshot hash; computing the metrics from it gives the same results hash.",
     ],
   };
