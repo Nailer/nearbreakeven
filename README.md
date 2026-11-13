@@ -179,7 +179,7 @@ The thresholds were set on 13 Nov 2026 after a first look at the data, and befor
 |---|---|
 | Data | Real mainnet data from NearBlocks, DefiLlama and NEAR's archival RPC, through 12 Nov 2026 |
 | Ledger contract | Deployed on NEAR **testnet** at `ledger.nearbreakeven.testnet` ([code](contract/src/lib.rs)); run #0 anchored |
-| Re-runs | CLI re-run from a clean fetch attested by `rerun.nearbreakeven.testnet` with `results_matches: true`; the browser re-run gives the same hashes |
+| Re-runs | Two re-runs of run #0 recorded on chain, both `results_matches: true`: one from the command line (`rerun.nearbreakeven.testnet`) and one from a real Meteor wallet in the browser (`itup.testnet`, [transaction](https://testnet.nearblocks.io/txns/2guJAijVEZ3Hgn83R6gM8sEdM74kPvR5Zzk6CP7aKpYB)) |
 | Live site | https://nearbreakeven.vercel.app, fully static: the browser does all the work, there is no backend to trust |
 | Daily runs | A GitHub Action rebuilds the thesis every day, anchors the new run and commits the data, using the publisher's testnet key from the `NEAR_KEYS` repository secret; the site reads the newest committed run |
 | Mainnet | The ledger runs on testnet (hackathon rule Q-010 allows it). The data it describes is mainnet |
