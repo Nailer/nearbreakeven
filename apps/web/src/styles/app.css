@@ -1256,6 +1256,315 @@ input[type="range"] {
   line-height: 1.7;
 }
 
+/* ---------- for NEAR ---------- */
+.value-block {
+  margin-top: clamp(48px, 7vw, 88px);
+}
+
+.value-block h2 {
+  margin-bottom: 14px;
+}
+
+.value-intro {
+  max-width: 68ch;
+  margin: 0 0 22px;
+}
+
+/* The money path: the one moving thing on this page. Dots travel from swaps to buybacks. */
+.flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr);
+  align-items: stretch;
+  margin-top: 22px;
+}
+
+.flow-station {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 18px 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--revenue);
+  border-radius: var(--r-md);
+}
+
+.flow-station:last-child {
+  background: var(--revenue-soft);
+}
+
+.flow-k {
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+}
+
+.flow-v {
+  font-family: var(--serif);
+  font-size: var(--t-xl);
+  font-weight: 500;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-d {
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.flow-link {
+  align-self: center;
+  height: 10px;
+  margin: 0 6px;
+  background: radial-gradient(circle, var(--revenue) 2.6px, transparent 3.2px) 0 50% / 14px 10px repeat-x;
+  animation: flow-x 0.9s linear infinite;
+}
+
+@keyframes flow-x {
+  to {
+    background-position: 14px 50%;
+  }
+}
+
+.flow-against {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--issuance-soft);
+}
+
+.flow-against p {
+  margin: 0;
+  font-size: var(--t-sm);
+}
+
+.flow-against-bar {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--revenue) var(--cov), var(--issuance) var(--cov));
+}
+
+.levers,
+.model {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+}
+
+.levers th,
+.levers td,
+.model th,
+.model td {
+  text-align: left;
+  vertical-align: top;
+  padding: 14px 16px 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.levers thead th,
+.model thead th {
+  font-weight: 500;
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+}
+
+.levers tbody th,
+.model tbody th {
+  font-weight: 600;
+  width: 34%;
+}
+
+.levers tbody th span {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
+
+.lever-pts {
+  display: block;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--revenue-ink);
+}
+
+.lever-pts.is-down {
+  color: var(--issuance-ink);
+}
+
+.lever-bar {
+  display: block;
+  margin-top: 8px;
+  height: 6px;
+  width: 140px;
+  max-width: 100%;
+  border-radius: 3px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.lever-bar i {
+  display: block;
+  height: 100%;
+  background: var(--revenue);
+  border-radius: 3px;
+  transform-origin: left;
+  animation: lever-in 0.9s var(--ease) both;
+}
+
+.lever-bar i.is-down {
+  background: var(--issuance);
+}
+
+@keyframes lever-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.who {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 48px;
+  margin: 0;
+}
+
+.who div {
+  padding: 18px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.who dt {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.who dd {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+}
+
+.status {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  background: var(--paper-2);
+}
+
+.status--live {
+  color: var(--revenue-ink);
+  background: var(--revenue-soft);
+}
+
+.cli--wide code {
+  font-size: 13px;
+}
+
+.worth {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+
+.worth-figs {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+
+.worth-figs div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.worth-figs dt {
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+}
+
+.worth-figs dd {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--t-lg);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-link,
+  .lever-bar i {
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .flow-link {
+    justify-self: center;
+    width: 10px;
+    height: 28px;
+    margin: 4px 0;
+    background: radial-gradient(circle, var(--revenue) 2.6px, transparent 3.2px) 50% 0 / 10px 14px repeat-y;
+    animation-name: flow-y;
+  }
+
+  .who,
+  .worth {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .levers thead,
+  .model thead {
+    display: none;
+  }
+
+  .levers tr,
+  .model tr {
+    display: grid;
+    gap: 4px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .levers th,
+  .levers td,
+  .model th,
+  .model td {
+    padding: 0;
+    border: 0;
+    width: auto;
+  }
+
+  .levers tbody th,
+  .model tbody th {
+    width: auto;
+  }
+}
+
+@keyframes flow-y {
+  to {
+    background-position: 50% 14px;
+  }
+}
+
 /* ---------- evidence ---------- */
 .figures {
   display: grid;
@@ -1574,4 +1883,9 @@ input[type="range"] {
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+.claim-test span {
+  font-weight: 600;
+  color: var(--ink);
 }

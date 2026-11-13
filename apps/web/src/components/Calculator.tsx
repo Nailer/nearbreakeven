@@ -8,10 +8,12 @@ import { pct, usd } from "../lib/data";
  */
 export function Calculator({ results }: { results: Results }) {
   const m = results.metrics;
+  // Start exactly at the run's own numbers, so the defaults reproduce the headline coverage and breakeven.
+  // The price is the value-weighted price the last 30 days of new NEAR were minted at.
   const today = {
-    volume: Math.round(m.breakeven.currentDailyVolume / 1e6),
-    bps: Math.round(m.intents.takeRateBps * 100) / 100,
-    price: Math.round(m.supply.priceAvg30 * 100) / 100,
+    volume: m.breakeven.currentDailyVolume / 1e6,
+    bps: (m.intents.revenue30 / m.intents.volume30) * 10_000,
+    price: m.supply.issuanceUsd30 / m.supply.issuanceNear30,
   };
   const [volume, setVolume] = useState(today.volume);
   const [bps, setBps] = useState(today.bps);
@@ -29,19 +31,19 @@ export function Calculator({ results }: { results: Results }) {
       <div className="calc-controls">
         <label htmlFor={ids.v}>
           <span>NEAR Intents volume a day</span>
-          <b>{usd(volume * 1e6, 0)}</b>
+          <b>{usd(volume * 1e6, 2)}</b>
         </label>
-        <input id={ids.v} type="range" min={25} max={2000} step={5} value={volume} onChange={(e) => setVolume(+e.target.value)} />
+        <input id={ids.v} type="range" min={25} max={2000} step="any" value={volume} onChange={(e) => setVolume(+e.target.value)} />
         <label htmlFor={ids.b}>
           <span>Share of volume NEAR keeps as revenue</span>
           <b>{bps.toFixed(2)} bps</b>
         </label>
-        <input id={ids.b} type="range" min={1} max={12} step={0.05} value={bps} onChange={(e) => setBps(+e.target.value)} />
+        <input id={ids.b} type="range" min={1} max={12} step="any" value={bps} onChange={(e) => setBps(+e.target.value)} />
         <label htmlFor={ids.p}>
-          <span>NEAR price</span>
+          <span>NEAR price (what the last 30 days of new NEAR were worth, per NEAR)</span>
           <b>${price.toFixed(2)}</b>
         </label>
-        <input id={ids.p} type="range" min={0.5} max={20} step={0.05} value={price} onChange={(e) => setPrice(+e.target.value)} />
+        <input id={ids.p} type="range" min={0.5} max={20} step="any" value={price} onChange={(e) => setPrice(+e.target.value)} />
         <button
           type="button"
           className="btn btn--quiet"
@@ -57,7 +59,7 @@ export function Calculator({ results }: { results: Results }) {
       </div>
       <div className="calc-out" aria-live="polite">
         <p className="calc-big">
-          <span className={coverage >= 1 ? "is-over" : undefined}>{pct(coverage, 0)}</span> of new NEAR paid for
+          <span className={coverage >= 1 ? "is-over" : undefined}>{pct(coverage, 1)}</span> of new NEAR paid for
         </p>
         <div className="tape tape--compact">
           <div className="tape-track">
@@ -82,7 +84,7 @@ export function Calculator({ results }: { results: Results }) {
           </div>
         </dl>
         <p className="calc-note">
-          New NEAR per day is fixed by the protocol (2.5% a year since October 2025), so price and fees are the only levers. A higher price
+          New NEAR per day is set by the protocol (at most 2.5% a year since the end of October 2025), so volume, take rate and price are the levers. A higher price
           makes breakeven harder.
         </p>
       </div>

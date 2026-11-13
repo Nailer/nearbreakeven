@@ -1,4 +1,4 @@
-import { LEDGER_CONTRACT, type Results, accountUrl, thesisDoc } from "@nearbreakeven/evidence";
+import { LEDGER_CONTRACT, type Results, accountUrl, levers, thesisDoc } from "@nearbreakeven/evidence";
 import { Calculator } from "../components/Calculator";
 import { Chart } from "../components/Chart";
 import { ClaimList, Tape, VerdictMark } from "../components/parts";
@@ -61,6 +61,7 @@ export function Home({ results }: { results: Results }) {
   const months = results.months.filter((x) => !x.partial);
   const since2024 = months;
   const sinceRevenue = months.filter((x) => x.intentsRevenue !== null);
+  const l = levers(results);
 
   return (
     <main>
@@ -150,7 +151,7 @@ export function Home({ results }: { results: Results }) {
               {m.breakeven.revenueMultiple}× less.
             </p>
             <p>
-              Coverage is the scoreboard that follows: Intents revenue divided by the dollar value of the NEAR minted in the same month. One
+              Coverage is the scoreboard that follows: Intents revenue divided by the dollar value of the NEAR minted over the same 30 days. One
               hundred percent is breakeven.
             </p>
             <Figures
@@ -199,7 +200,7 @@ export function Home({ results }: { results: Results }) {
         </div>
       </section>
 
-      <section className="section section--tint">
+      <section className="section section--tint" id="calculator">
         <div className="wrap">
           <div className="prose">
             <h2>What would it take?</h2>
@@ -209,6 +210,36 @@ export function Home({ results }: { results: Results }) {
             </p>
           </div>
           <Calculator results={results} />
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="wrap worth">
+          <div className="prose">
+            <h2>Why NEAR should care.</h2>
+            <p>
+              At the last 30 days' pace, NEAR Intents earns NEAR {usd(l.revenueRunRateYear, 1)} a year against {usd(l.issuanceRunRateYear, 1)} of
+              new NEAR. Investors, House of Stake voters and the Intents team all need to know which lever closes that gap, and they need a number
+              they can check.
+            </p>
+            <Link to="/for-near" className="btn">
+              What it is worth to NEAR
+            </Link>
+          </div>
+          <dl className="worth-figs">
+            <div>
+              <dt>Each $1M swapped through Intents</dt>
+              <dd>${l.revenuePerMillion.toFixed(0)} for NEAR</dd>
+            </div>
+            <div>
+              <dt>Each extra $100M of volume a day</dt>
+              <dd>+{l.per100mVolume.coveragePoints.toFixed(1)} points of coverage</dd>
+            </div>
+            <div>
+              <dt>Each extra basis point NEAR keeps</dt>
+              <dd>+{l.perBasisPoint.coveragePoints.toFixed(1)} points</dd>
+            </div>
+          </dl>
         </div>
       </section>
 

@@ -6,6 +6,7 @@ import { ErrorNote, Footer, Nav, Spinner, ToastProvider } from "./components/par
 import { type Latest, loadPublished, useAsync } from "./lib/data";
 import { RouterProvider, useRoute } from "./lib/router";
 import { Evidence } from "./pages/Evidence";
+import { ForNear } from "./pages/ForNear";
 import { Home } from "./pages/Home";
 import { Thesis } from "./pages/Thesis";
 import { Verify } from "./pages/Verify";
@@ -35,6 +36,7 @@ const TITLES: Record<string, string> = {
   "/evidence": "The evidence · NEAR Breakeven",
   "/thesis": "The thesis · NEAR Breakeven",
   "/verify": "Re-run and verify · NEAR Breakeven",
+  "/for-near": "What it is worth to NEAR · NEAR Breakeven",
 };
 
 function Routes({ latest, results, resultsSha256 }: { latest: Latest; results: Results; resultsSha256: string }) {
@@ -47,6 +49,7 @@ function Routes({ latest, results, resultsSha256 }: { latest: Latest; results: R
   if (path === "/evidence") return <Evidence results={results} latest={latest} />;
   if (path === "/thesis") return <Thesis results={results} resultsSha256={resultsSha256} />;
   if (path === "/verify") return <Verify latest={latest} />;
+  if (path === "/for-near") return <ForNear results={results} />;
   return (
     <main className="page">
       <div className="wrap prose">

@@ -26,11 +26,18 @@ interface Props {
 
 const PAD = { top: 18, right: 14, bottom: 26, left: 52 };
 
+/** The smallest "round" top of the axis whose quarter steps are round too (0.5, 1, 1.5, 2 ... of a power of ten). */
 function niceMax(v: number): number {
   if (v <= 0) return 1;
-  const p = 10 ** Math.floor(Math.log10(v));
-  for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
-  return 10 * p;
+  const raw = v / 4;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 8, 10]) if (m * p * 4 >= v) return m * p * 4;
+  return 40 * p;
+}
+
+/** Axis labels drop trailing zeros: "$600.0K" → "$600K", "1.00M" → "1M", "1.50M" → "1.5M". */
+export function tickLabel(text: string): string {
+  return text.replace(/(\d)\.(\d*?)0+(?!\d)/g, (_m, a: string, b: string) => (b ? `${a}.${b}` : a));
 }
 
 /**
@@ -97,7 +104,7 @@ export function Chart({ labels, series, format, height = 240, reference, marker,
           <g key={t}>
             <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} className="chart-grid" />
             <text x={PAD.left - 8} y={y(t) + 4} className="chart-tick" textAnchor="end">
-              {format(t)}
+              {tickLabel(format(t))}
             </text>
           </g>
         ))}

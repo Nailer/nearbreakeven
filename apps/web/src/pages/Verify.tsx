@@ -311,6 +311,11 @@ pnpm thesis            # rebuild from raw data`}
   );
 }
 
+const DOLLARS = new Set(["volume", "fees", "revenue", "feeUsd", "price"]);
+/** A revised value as it reads best: dollars for money fields, an ellipsis for long blobs. */
+const cell = (field: string, v: string) =>
+  v.length > 24 ? "…" : DOLLARS.has(field) && Number.isFinite(Number(v)) ? `$${Number(v).toLocaleString("en-US")}` : v;
+
 /** The second check: have the public sources changed the data since the run was pinned? */
 function DataCheckNote({ run, results, data }: { run: ChainRun; results: Results; data: DataCheck }) {
   if (data.state === "clean") {
@@ -357,8 +362,8 @@ function DataCheckNote({ run, results, data }: { run: ChainRun; results: Results
               <td>{d.source}</td>
               <td>{d.day}</td>
               <td>{d.field}</td>
-              <td className="mono">{d.before.length > 24 ? "…" : d.before}</td>
-              <td className="mono">{d.after.length > 24 ? "…" : d.after}</td>
+              <td className="mono">{cell(d.field, d.before)}</td>
+              <td className="mono">{cell(d.field, d.after)}</td>
             </tr>
           ))}
         </tbody>

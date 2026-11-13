@@ -58,7 +58,7 @@ export function ClaimList({ claims }: { claims: Claim[] }) {
           <div className="claim-body">
             <p className="claim-text">{c.claim}</p>
             <p className="claim-test">
-              Breaks if this stops being true: {c.test.charAt(0).toLowerCase() + c.test.slice(1)}
+              <span>Test:</span> {c.test}
             </p>
           </div>
           <div className="claim-result">
@@ -130,6 +130,7 @@ const NAV = [
   { to: "/", label: "Thesis in brief" },
   { to: "/evidence", label: "Evidence" },
   { to: "/thesis", label: "Full thesis" },
+  { to: "/for-near", label: "For NEAR" },
   { to: "/verify", label: "Re-run and verify" },
 ];
 
@@ -198,6 +199,7 @@ export function Footer({ results }: { results?: Results }) {
             Source code
           </a>
           <Link to="/verify">Re-run it</Link>
+          <Link to="/for-near">What it is worth to NEAR</Link>
           <a href="https://testnet.nearblocks.io/address/ledger.nearbreakeven.testnet" target="_blank" rel="noreferrer">
             Ledger contract
           </a>

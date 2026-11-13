@@ -129,7 +129,7 @@ export function Evidence({ results, latest }: { results: Results; latest: Latest
           </Figure>
 
           <Figure
-            title="Issuance was halved in November 2025"
+            title="Issuance was halved at the end of October 2025"
             says={`About ${compact(m.supply.issuanceNear30)} new NEAR in the last 30 days, ${m.supply.annualizedRatePct.toFixed(2)}% a year. Before the cut, about twice that.`}
             how="Monthly sum of the day-on-day change in total supply. It already nets out burned gas."
             source={ext(SOURCES.nearblocksDaily, "NearBlocks /v1/charts, field total_supply")}
