@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>NEAR Breakeven brand sheet</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500&display=swap" rel="stylesheet" />
+<style>
+  :root { --paper:#f2f5f7; --ink:#12202e; --ink2:#435466; --rev:#0b9a68; --iss:#d9871a; --iss-soft:#f8e7cc; }
+  .banner .sub { font-size:26px; color:var(--ink2); margin:22px 0 0; max-width:900px; line-height:1.4; }
+  .banner .sub b { color:var(--ink); font-weight:600; }
+  body { margin:0; padding:40px; background:transparent; font-family:Geist, sans-serif; display:grid; gap:40px; justify-items:start; }
+  .mark { width:512px; height:512px; }
+  .word { display:inline-flex; align-items:center; gap:28px; padding:40px 48px; font-weight:600; font-size:76px; letter-spacing:-0.02em; }
+  .word svg { width:104px; height:104px; }
+  .word.light { color:var(--ink); }
+  .word.dark { color:var(--paper); }
+  .square { width:1024px; height:1024px; background:var(--paper); display:grid; place-items:center; }
+  .square .inner { display:grid; justify-items:center; gap:44px; }
+  .square svg { width:420px; height:420px; }
+  .square b { font-size:84px; letter-spacing:-0.02em; color:var(--ink); }
+  .banner { width:1200px; height:630px; background:var(--paper); box-sizing:border-box; padding:56px 64px; display:grid; grid-template-rows:auto 1fr auto auto; position:relative; overflow:hidden; }
+  .banner .top { display:flex; align-items:center; justify-content:space-between; }
+  .banner .brand { display:flex; align-items:center; gap:14px; font-weight:600; font-size:28px; color:var(--ink); letter-spacing:-0.01em; }
+  .banner .brand svg { width:44px; height:44px; }
+  .banner .pill { font-size:20px; color:var(--rev); background:#d3f2e5; padding:6px 16px; border-radius:999px; font-weight:600; }
+  .banner h1 { font-family:Newsreader, serif; font-weight:500; font-size:70px; line-height:1.05; letter-spacing:-0.01em; color:var(--ink); margin:30px 0 0; max-width:960px; }
+  .banner .tape { height:64px; border-radius:10px; position:relative; overflow:hidden; box-shadow:inset 0 0 0 2px var(--iss);
+    background:repeating-linear-gradient(-45deg, var(--iss-soft) 0 10px, #edcb97 10px 11px); margin-bottom:16px; }
+  .banner .fill { position:absolute; inset:0 auto 0 0; width:15.66%; background:var(--rev); display:flex; align-items:center; justify-content:flex-end; padding-right:14px; box-sizing:border-box; color:#fff; font-weight:600; font-size:24px; }
+  .banner .end { position:absolute; right:0; top:0; bottom:0; width:5px; background:var(--ink); }
+  .banner .foot { display:flex; justify-content:space-between; font-size:21px; color:var(--ink2); }
+  .banner .foot b { color:var(--ink); font-weight:600; }
+</style>
+</head>
+<body>
+<template id="logo"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="30" height="30" rx="8" fill="#12202e"/><rect x="7" y="18" width="18" height="5" rx="2.5" fill="#d9871a"/><rect x="7" y="18" width="7" height="5" rx="2.5" fill="#0b9a68"/><path d="M25 9v17" stroke="#f2f5f7" stroke-width="2" stroke-linecap="round"/><path d="M7 13.5 13 10l5 2.5 7-4" fill="none" stroke="#f2f5f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/></svg></template>
+
+<div id="mark" class="mark" data-logo></div>
+<div id="word-light" class="word light"><span data-logo></span>NEAR Breakeven</div>
+<div id="word-dark" class="word dark" style="background:#12202e"><span data-logo></span>NEAR Breakeven</div>
+<div id="square" class="square"><div class="inner"><span data-logo></span><b>NEAR Breakeven</b></div></div>
+<div id="banner" class="banner">
+  <div class="top"><div class="brand"><span data-logo></span>NEAR Breakeven</div><span class="pill">Thesis holds · 4 of 4 tests pass</span></div>
+  <div><h1>NEAR Intents now pays for 15.7% of every new NEAR.</h1>
+  <p class="sub">Last 30 days: <b>$1.84M</b> of Intents revenue against <b>$11.73M</b> of newly minted NEAR, while L1 activity fell 97% from its peak. An investment thesis with four tests that can break it.</p></div>
+  <div class="tape"><div class="fill">15.7%</div><div class="end"></div></div>
+  <div class="foot"><span>Re-run every number in your browser. <b>Verified on NEAR.</b></span><b>nearbreakeven.vercel.app</b></div>
+</div>
+<script>
+  const t = document.getElementById("logo").innerHTML;
+  for (const el of document.querySelectorAll("[data-logo]")) el.innerHTML = t;
+  for (const s of document.querySelectorAll("[data-logo] svg")) { s.style.width = "100%"; s.style.height = "100%"; s.style.display = "block"; }
+  document.querySelectorAll(".word [data-logo]").forEach((e) => { e.style.width = "104px"; e.style.height = "104px"; });
+  document.querySelectorAll(".square [data-logo]").forEach((e) => { e.style.width = "420px"; e.style.height = "420px"; });
+  document.querySelectorAll(".banner .brand [data-logo]").forEach((e) => { e.style.width = "44px"; e.style.height = "44px"; });
+</script>
+</body>
+</html>
