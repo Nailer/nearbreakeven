@@ -213,10 +213,10 @@ export function Footer({ results }: { results?: Results }) {
 
 export function Spinner({ label }: { label: string }) {
   return (
-    <p className="loading" role="status">
+    <output className="loading">
       <span className="spinner" aria-hidden="true" />
       {label}
-    </p>
+    </output>
   );
 }
 

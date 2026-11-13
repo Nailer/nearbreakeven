@@ -128,7 +128,6 @@ export function Chart({ labels, series, format, height = 240, reference, marker,
           s.values.map((v, i) =>
             v === null ? null : (
               <rect
-                // biome-ignore lint/suspicious/noArrayIndexKey: positional series
                 key={`${s.label}-${i}`}
                 x={x(i) - (barW * bars.length) / 2 + bi * barW}
                 y={y(Math.max(v, yMin))}
