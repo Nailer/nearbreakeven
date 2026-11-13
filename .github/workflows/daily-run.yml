@@ -1,0 +1,52 @@
+name: Daily run
+
+# Every day: rebuild the thesis for yesterday from raw public data, anchor the
+# run on NEAR testnet, and commit the pinned snapshot, results and THESIS.md.
+# The site reads the newest committed run, so the thesis stays live.
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Rebuild the thesis for yesterday
+        run: pnpm thesis
+      - name: Skip if this day is already anchored
+        id: fresh
+        run: |
+          AS_OF=$(node -p "require('./data/latest.json').asOf")
+          LAST=$(npx tsx scripts/latest-anchored.ts)
+          echo "as_of=$AS_OF last=$LAST"
+          if [ "$AS_OF" \> "$LAST" ]; then echo "new=true" >> "$GITHUB_OUTPUT"; else echo "new=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Anchor the run on NEAR testnet
+        if: steps.fresh.outputs.new == 'true'
+        env:
+          # Testnet key of the publisher account only. Set as a repository secret.
+          NEAR_KEYS: ${{ secrets.NEAR_KEYS }}
+        run: pnpm anchor
+      - name: Commit the run
+        if: steps.fresh.outputs.new == 'true'
+        run: |
+          git config user.name "nearbreakeven-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data THESIS.md apps/web/public/data
+          git commit -m "Daily run: data through $(node -p "require('./data/latest.json').asOf")"
+          git push

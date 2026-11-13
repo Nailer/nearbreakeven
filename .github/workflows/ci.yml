@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Unit tests (evidence engine and web)
+        run: pnpm test
+      - name: Typecheck
+        run: pnpm typecheck && npx tsc -p tsconfig.json
+      - name: Build the site
+        run: pnpm --filter web build
+
+  reproduce:
+    # The point of the project: anyone can reproduce the anchored run.
+    # Reads the latest run from the NEAR ledger, recomputes it from the pinned
+    # snapshot, and fails if the results hash differs. No keys.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Recompute the anchored run from the pinned snapshot
+        run: pnpm verify --snapshot
+
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: contract
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contract
+      - name: Contract unit tests
+        run: cargo test --locked

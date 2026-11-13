@@ -13,7 +13,10 @@ import { useEffect, useState } from "react";
 import { Hash, useToast, VerdictMark } from "../components/parts";
 import { LedgerFeed } from "../components/LedgerFeed";
 import { type Latest, loadPinnedSnapshot } from "../lib/data";
-import { WALLETS, attest, connect, connectedAccount, disconnect } from "../lib/wallet";
+import { WALLETS } from "../lib/wallets";
+
+/** The wallet libraries are large; load them only on this page, when needed. */
+const walletLib = () => import("../lib/wallet");
 
 type Method = "live" | "snapshot";
 type Step = { label: string; state: "todo" | "doing" | "done" | "failed"; detail?: string };
@@ -49,7 +52,9 @@ export function Verify({ latest }: { latest: Latest }) {
   const [feedKey, setFeedKey] = useState(0);
 
   useEffect(() => {
-    connectedAccount().then(setAccount, () => setAccount(null));
+    walletLib()
+      .then((w) => w.connectedAccount())
+      .then(setAccount, () => setAccount(null));
   }, []);
 
   useEffect(() => {
@@ -107,7 +112,7 @@ export function Verify({ latest }: { latest: Latest }) {
   async function onConnect(id: string, label: string) {
     setBusy(id);
     try {
-      const a = await connect(id);
+      const a = await (await walletLib()).connect(id);
       setAccount(a);
       toast(`Connected ${a}`);
     } catch (e) {
@@ -121,7 +126,7 @@ export function Verify({ latest }: { latest: Latest }) {
     if (!outcome) return;
     setBusy("attest");
     try {
-      const { hash, attestation } = await attest({
+      const { hash, attestation } = await (await walletLib()).attest({
         run_id: outcome.run.id,
         snapshot_sha256: outcome.snapshotSha256,
         results_sha256: outcome.resultsSha256,
@@ -253,7 +258,7 @@ export function Verify({ latest }: { latest: Latest }) {
                   <div className="attest-form">
                     <p>
                       Signed in as <b>{account}</b>{" "}
-                      <button type="button" className="link" onClick={() => disconnect().then(() => setAccount(null))}>
+                      <button type="button" className="link" onClick={() => walletLib().then((w) => w.disconnect()).then(() => setAccount(null))}>
                         Switch account
                       </button>
                     </p>

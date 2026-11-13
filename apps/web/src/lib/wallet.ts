@@ -20,13 +20,6 @@ function getSelector(): Promise<WalletSelector> {
   return selectorPromise;
 }
 
-export const WALLETS = [
-  { id: "meteor-wallet", label: "Meteor Wallet", kind: "Web or extension" },
-  { id: "intear-wallet", label: "Intear Wallet", kind: "Web" },
-  { id: "here-wallet", label: "HERE Wallet", kind: "Mobile or web" },
-  { id: "sender", label: "Sender", kind: "Browser extension" },
-] as const;
-
 export async function connect(walletId: string): Promise<string> {
   const selector = await getSelector();
   const wallet = await selector.wallet(walletId);

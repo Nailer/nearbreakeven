@@ -18,16 +18,38 @@ async function getJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Where published runs live. The daily GitHub Action commits each new run to
+ * the repository, so the site reads the newest one from there and falls back
+ * to the copy bundled with the site if GitHub is unreachable.
+ */
+export const DATA_SOURCES = ["https://raw.githubusercontent.com/Nailer/nearbreakeven/main/data", "/data"] as const;
+let dataBase: string = DATA_SOURCES[1];
+export const dataUrl = (path: string) => `${dataBase}/${path}`;
+
 let bundle: Promise<{ latest: Latest; results: Results }> | null = null;
 
-/** The published run that ships with the site (data/latest.json and its results). */
+/** The newest published run (data/latest.json and its results). */
 export function loadPublished() {
-  bundle ??= getJson<Latest>("/data/latest.json").then(async (latest) => ({ latest, results: await getJson<Results>(`/data/${latest.results}`) }));
+  bundle ??= (async () => {
+    let lastError: unknown;
+    for (const base of DATA_SOURCES) {
+      try {
+        const latest = await getJson<Latest>(`${base}/latest.json`);
+        const results = await getJson<Results>(`${base}/${latest.results}`);
+        dataBase = base;
+        return { latest, results };
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError;
+  })();
   return bundle;
 }
 
 export function loadPinnedSnapshot(latest: Latest) {
-  return getJson<Snapshot>(`/data/${latest.snapshot}`);
+  return getJson<Snapshot>(dataUrl(latest.snapshot));
 }
 
 export async function loadLedger(): Promise<{ runs: ChainRun[]; attestations: ChainAttestation[] }> {

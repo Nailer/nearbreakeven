@@ -2,7 +2,7 @@ import { BLOCK_BEFORE_INFLATION_CUT, type Results, SOURCES, type Snapshot } from
 import type { ReactNode } from "react";
 import { Chart, type Series } from "../components/Chart";
 import { Hash, Spinner } from "../components/parts";
-import { type Latest, compact, loadPinnedSnapshot, mainnetAccountUrl, monthLabel, num, REPO, useAsync, usd } from "../lib/data";
+import { type Latest, compact, dataUrl, loadPinnedSnapshot, mainnetAccountUrl, monthLabel, num, REPO, useAsync, usd } from "../lib/data";
 
 function Figure(props: { title: string; says: string; how: ReactNode; source: ReactNode; code: string; children: ReactNode }) {
   return (
@@ -210,11 +210,11 @@ export function Evidence({ results, latest }: { results: Results; latest: Latest
           {snap.status === "loading" && <Spinner label="Loading the pinned snapshot" />}
           <p className="muted">
             Download the exact data:{" "}
-            <a href={`/data/${latest.snapshot}`} download>
+            <a href={dataUrl(latest.snapshot)} download>
               snapshot.json
             </a>{" "}
             ·{" "}
-            <a href={`/data/${latest.results}`} download>
+            <a href={dataUrl(latest.results)} download>
               results.json
             </a>
           </p>
