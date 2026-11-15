@@ -8,7 +8,7 @@
  * Writes data/snapshots/<asOf>/{snapshot,results}.json, data/latest.json and THESIS.md,
  * and copies them to apps/web/public/data for the dashboard.
  */
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { canonical, computeResults, fetchSnapshot, hashOf, type Snapshot, thesisMarkdown } from "@nearbreakeven/evidence";
@@ -48,14 +48,23 @@ const latest = {
   snapshot: `snapshots/${snapshot.asOf}/snapshot.json`,
   results: `snapshots/${snapshot.asOf}/results.json`,
 };
-writeFileSync(join(root, "data", "latest.json"), `${JSON.stringify(latest, null, 2)}\n`);
-writeFileSync(join(root, "THESIS.md"), thesisMarkdown(results, resultsSha256));
+// Never replace the published run with an older day: a re-run for an earlier day (for example with fewer
+// settled days on a different date) writes its snapshot and results, and leaves THESIS.md and latest.json alone.
+const latestFile = join(root, "data", "latest.json");
+const published = existsSync(latestFile) ? (JSON.parse(readFileSync(latestFile, "utf8")) as { asOf: string }).asOf : "";
+const publish = snapshot.asOf >= published || process.argv.includes("--publish");
+if (publish) {
+  writeFileSync(latestFile, `${JSON.stringify(latest, null, 2)}\n`);
+  writeFileSync(join(root, "THESIS.md"), thesisMarkdown(results, resultsSha256));
+} else {
+  console.log(`note      this run is for ${snapshot.asOf}, older than the published run (${published}); THESIS.md and data/latest.json are unchanged (pass --publish to replace them)`);
+}
 
 const pub = join(root, "apps", "web", "public", "data", "snapshots", snapshot.asOf);
 mkdirSync(pub, { recursive: true });
 copyFileSync(join(dir, "snapshot.json"), join(pub, "snapshot.json"));
 copyFileSync(join(dir, "results.json"), join(pub, "results.json"));
-copyFileSync(join(root, "data", "latest.json"), join(root, "apps", "web", "public", "data", "latest.json"));
+if (publish) copyFileSync(latestFile, join(root, "apps", "web", "public", "data", "latest.json"));
 
 const m = results.metrics;
 console.log(`
