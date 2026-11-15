@@ -51,3 +51,54 @@ export function levers(r: Results): Levers {
     gapPerYear: round(((costPerDay - revenuePerDay) * 365), 0),
   };
 }
+
+/**
+ * HSP-029, approved by House of Stake on 2 Nov 2026 (99.9% of voting veNEAR):
+ * NEAR's maximum yearly issuance moves from 2.5% to 1.6% over 24 months,
+ * after a 14-day Security Council veto window and a 90-day grace period.
+ * It is not in the protocol yet, so it is a scenario on the anchored run, not
+ * a measurement: at the run's revenue and price, what does the lower issuance
+ * do to coverage and to the volume needed for breakeven?
+ * Source: https://cointelegraph.com/news/near-sinks-7-proposal-cut-annual-token-issuance-passes
+ */
+export const HSP_029 = {
+  id: "HSP-029",
+  approvedOn: "2026-11-02",
+  fromPct: 2.5,
+  toPct: 1.6,
+  rampMonths: 24,
+  /** Veto window plus grace period before the first reduction. */
+  delayDays: 14 + 90,
+} as const;
+
+export interface IssuanceCutScenario {
+  /** Issuance after the ramp, as a share of today's (1.6 / today's rate). */
+  issuanceFactor: number;
+  coverageNowPct: number;
+  coverageAfterPct: number;
+  volumeMultipleNow: number;
+  volumeMultipleAfter: number;
+  /** Earliest date the reduction can start, and when the ramp ends. */
+  startsFrom: string;
+  fullBy: string;
+}
+
+const addDaysIso = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+export function issuanceCutScenario(r: Results): IssuanceCutScenario {
+  const m = r.metrics;
+  // Today's protocol cap, read from the chain at the run's block; the cut is applied to issuance in proportion.
+  const nowPct = m.chain.inflationNowPct;
+  const factor = HSP_029.toPct / nowPct;
+  const startsFrom = addDaysIso(HSP_029.approvedOn, HSP_029.delayDays);
+  const fullBy = addDaysIso(startsFrom, Math.round(HSP_029.rampMonths * 30.44));
+  return {
+    issuanceFactor: round(factor, 3),
+    coverageNowPct: round(m.breakeven.coverage30 * 100, 2),
+    coverageAfterPct: round((m.breakeven.coverage30 / factor) * 100, 2),
+    volumeMultipleNow: m.breakeven.volumeMultipleNeeded,
+    volumeMultipleAfter: round(m.breakeven.volumeMultipleNeeded * factor, 2),
+    startsFrom,
+    fullBy,
+  };
+}

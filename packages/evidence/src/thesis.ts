@@ -3,6 +3,7 @@
  * and the website are regenerated from the same run and can never disagree
  * with the data. Nothing here is typed in by hand.
  */
+import { issuanceCutScenario } from "./value.js";
 import { THRESHOLDS } from "./metrics.js";
 import type { Results } from "./types.js";
 
@@ -70,6 +71,13 @@ export function thesisDoc(r: Results): ThesisDoc {
       {
         title: "Issuance was halved, and the chain itself shows it",
         body: `Read straight from NEAR mainnet's protocol parameters: maximum inflation was ${m.chain.inflationBeforePct}% at block 165,000,000 and is ${m.chain.inflationNowPct}% now. New supply over the last 30 days ran at ${m.supply.annualizedRatePct.toFixed(2)}% a year. A smaller issuance bill is half of why breakeven is reachable at all.`,
+      },
+      {
+        title: "A second cut is already approved (HSP-029)",
+        body: (() => {
+          const c = issuanceCutScenario(r);
+          return `On 2 Nov 2026 House of Stake approved lowering NEAR's maximum yearly issuance from 2.5% to 1.6% over 24 months, after a 14-day Security Council veto window and a 90-day grace period, so from ${c.startsFrom} at the earliest to about ${c.fullBy}. It is not in the protocol yet, so it is not in the tests. As a scenario on this run: at today's revenue and price, the same Intents revenue would cover ${c.coverageAfterPct}% of new NEAR instead of ${c.coverageNowPct}%, and breakeven would need ${c.volumeMultipleAfter}× today's volume instead of ${c.volumeMultipleNow}×.`;
+        })(),
       },
       {
         title: "Each active account is worth more",

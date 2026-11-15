@@ -27,3 +27,22 @@ describe("levers for NEAR, from anchored run #0", async () => {
     expect(l.revenueRunRateYear).toBeLessThan(l.issuanceRunRateYear);
   });
 });
+
+describe("HSP-029: the approved issuance cut, as a scenario on run #0", async () => {
+  const { HSP_029, issuanceCutScenario } = await import("../src/value.js");
+  const r = await computeResults(snap);
+  const s = issuanceCutScenario(r);
+  it("scales issuance by 1.6% over today's protocol cap", () => {
+    expect(s.issuanceFactor).toBeCloseTo(HSP_029.toPct / r.metrics.chain.inflationNowPct, 3);
+    expect(s.issuanceFactor).toBeCloseTo(0.64, 3);
+  });
+  it("raises coverage and lowers the breakeven volume in proportion", () => {
+    expect(s.coverageAfterPct).toBeCloseTo(s.coverageNowPct / 0.64, 1);
+    expect(s.volumeMultipleAfter).toBeCloseTo(s.volumeMultipleNow * 0.64, 1);
+    expect(s.coverageAfterPct).toBeGreaterThan(s.coverageNowPct);
+  });
+  it("cannot start before the veto window and grace period have passed", () => {
+    expect(s.startsFrom).toBe("2027-02-14");
+    expect(s.fullBy > "2029-02-01").toBe(true);
+  });
+});
