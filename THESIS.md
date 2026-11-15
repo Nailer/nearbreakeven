@@ -33,8 +33,6 @@ Long-term, NEAR's value depends on Intents revenue catching up with issuance, no
 
 **Issuance was halved, and the chain itself shows it.** Read straight from NEAR mainnet's protocol parameters: maximum inflation was 5% at block 165,000,000 and is 2.5% now. New supply over the last 30 days ran at 2.47% a year. A smaller issuance bill is half of why breakeven is reachable at all.
 
-**A second cut is already approved (HSP-029).** On 2 Nov 2026 House of Stake approved lowering NEAR's maximum yearly issuance from 2.5% to 1.6% over 24 months, after a 14-day Security Council veto window and a 90-day grace period, so from 2027-02-14 at the earliest to about 2029-02-14. It is not in the protocol yet, so it is not in the tests. As a scenario on this run: at today's revenue and price, the same Intents revenue would cover 24.47% of new NEAR instead of 15.66%, and breakeven would need 4.09× today's volume instead of 6.39×.
-
 **Each active account is worth more.** Gas paid per active account per day rose from $0.012 at the 2024 peak to $0.069 now. That fits a network that lost mass-airdrop and bot traffic, not paying users.
 
 ## Evidence against
