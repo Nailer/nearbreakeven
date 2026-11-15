@@ -1,27 +1,21 @@
-# NearBlocks API v1 is switched off on 22 Nov 2026
+# NearBlocks API v1 → v3
 
-The thesis reads NearBlocks' daily chain stats from `GET /v1/charts` (`packages/evidence/src/sources.ts`). NearBlocks switches v1 off on **22 Nov 2026** ([migration guide](https://api.nearblocks.io/api-docs/migration)). From then on `pnpm thesis` and the daily run fail at the first fetch. `pnpm verify --snapshot` keeps working, because it uses the pinned file.
+NearBlocks switches API v1 off on **22 Nov 2026** ([migration guide](https://api.nearblocks.io/api-docs/migration)). The thesis read its L1 days from `GET /v1/charts`; on this branch (`after-judging`) it reads API v3. How the numbers compare and why the method keeps the series is in [METHODOLOGY.md, section 9](METHODOLOGY.md#9-nearblocks-api-v1--v3).
 
-## What v3 changes (checked 15 Nov 2026)
+## What changed
 
-| v1 `/v1/charts` field | v3 source | Same numbers? |
-|---|---|---|
-| `txns` | `/v3/txn-stats` → `txns` | Yes: 1,036,324 on 13 Nov in both |
-| `total_supply` | `/v3/block-stats` → `total_supply` | To check |
-| `txn_fee` (yocto) | `/v3/txn-stats` → `txn_fee` (decimal NEAR) | Unit changes |
-| `txn_fee_usd` | none; `txn_fee` × `/v3/price-stats` → `near_price` | Derived |
-| `near_price` | `/v3/price-stats` → `near_price` | To check |
-| `active_accounts` | `/v3/address-stats` → `active_accounts` | **No.** 13 Nov: 85,595 in v1, 196,377 in v3 |
-| `new_accounts` | none (v3 has `new_contracts` and `meta_accounts`) | Missing |
+- **History from the pinned file.** v3's daily stats return at most the newest 365 days per call, while the thesis reads from 1 Jan 2024. So `fetchSnapshot({ base })` copies every L1 day up to the base's `asOf` from the previous anchored run's file and fetches only the newer days. The result is a `nearbreakeven/snapshot@2` that names its base by hash (`l1Base`), so each run points to the one before it, back to run #0.
+- **Same series from new fields.** `normalizeNearblocksV3` joins `/txn-stats`, `/address-stats`, `/block-stats` and `/price-stats` by date. Active accounts are `active_accounts − meta_accounts`; gas in USD is `txn_fee` × that day's `near_price`. A day missing from any endpoint stops the run.
+- **`pnpm thesis` finds its base itself:** the newest run anchored before the day, read from `data/snapshots/` and checked against its hash on NEAR. `--v1` builds every L1 row from v1 as run #0 was (until 22 Nov); `--dry-run` writes nothing.
+- **The data check rebuilds a run the way it was built** (`refetchLike`, used by `pnpm verify`, `pnpm drift` and the browser re-run). A snapshot@1 run checked after 22 Nov keeps its NearBlocks rows, still asks DefiLlama and the chain, and says so.
+- **Rate limit.** A daily run makes four v3 requests of one credit each. A 429 answer is waited out instead of failing the run.
+- **Tests.** 14 new, 49 in the evidence package, including real v1 and v3 rows for 12 to 14 Nov. Run #0's anchored hashes still match.
 
-Each v3 stats call returns at most 365 days, while the thesis reads from 1 Jan 2024 (the L1 peak, and 13 months for C4's correlation).
+## Checked live on 15 Nov 2026
 
-## Plan
+- Over the 365 days both APIs serve, transactions, supply and price are identical, fees in NEAR are identical on 364 days, and active accounts agree within 1.4% on the median day.
+- `pnpm thesis --as-of 2026-11-14 --dry-run` built on run #0's file: verdict HOLDS with the same four claim values as a build from v1 alone at the same block.
 
-1. **History from the pinned snapshot.** Days already in an anchored snapshot never change, so a run takes every day up to the previous anchored run's `asOf` from that snapshot (hash-checked) and fetches only the newer days from v3. That also stays inside the 365-day limit.
-2. **Active accounts: a stated break, not a silent one.** v3 counts about 2.3× more active accounts than v1 for the same day. The series is split at the switch-over day; the active-accounts change and C4 compare like with like (v1 with v1, v3 with v3), and METHODOLOGY.md says so.
-3. **Fees in USD** become `txn_fee` × that day's `near_price`, checked against v1 on the overlapping days before the switch.
-4. **New accounts** leave the snapshot (the thesis does not test them).
-5. The first v3 run is anchored as usual. `pnpm drift` shows which values moved and what that does to the verdict.
+## Going live
 
-This changes how future runs are built, not run #0: `pnpm verify --run 0` keeps matching from its pinned file.
+The branch stays off `main` until the results (18 Nov). Once it is merged, the next daily run (03:30 UTC) is the first v3 run; the workflow needs no change. It has to be on `main` before 22 Nov, or the daily run stops at its first NearBlocks request.

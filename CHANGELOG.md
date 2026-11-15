@@ -4,7 +4,7 @@
 
 - **HSP-029 as a scenario.** House of Stake approved lowering NEAR's maximum issuance from 2.5% to 1.6% over 24 months (2 Nov 2026). `issuanceCutScenario` applies it to the anchored run without touching the tests or the hashes: coverage 15.66% → 24.47%, breakeven volume 6.39× → 4.09× today's. Shown in THESIS.md under evidence for. 3 tests.
 - `pnpm thesis` no longer replaces the published run with an older day (it writes the run's files and leaves THESIS.md and latest.json alone unless `--publish`).
-- docs/SOURCES-V3.md: NearBlocks switches API v1 off on 22 Nov 2026; v3 counts active accounts differently (85,595 vs 196,377 on 13 Nov) and serves 365 days per call. The plan keeps run #0 verifiable and states the break.
+- **NearBlocks API v3.** NearBlocks switches API v1 off on 22 Nov 2026. A run now takes its L1 history from the previous anchored run's file (checked against its hash on NEAR) and fetches only the newer days from v3, as a `snapshot@2` that names its base by hash. Active accounts are `active_accounts − meta_accounts` and gas in USD is fee × price, which keep the v1 series: over 365 shared days, transactions, supply and price are identical and active accounts agree within 1.4%. For 14 Nov, a v3 build and an all-v1 build give the same claims and verdict. Verify, drift and the browser re-run rebuild a run the way it was built; `pnpm thesis --dry-run` and `--v1`. 14 tests. Details: docs/SOURCES-V3.md and METHODOLOGY.md section 9.
 
 ## 0.2.0 · 13 Nov 2026 (afternoon)
 

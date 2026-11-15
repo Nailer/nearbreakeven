@@ -89,7 +89,7 @@ flowchart LR
   H2 --> T["THESIS.md<br/>and the website"]
 ```
 
-**1. Pin.** A run picks a day (`asOf`, the newest UTC day that is at least 3 days old, so the sources have settled) and a NEAR mainnet block. It fetches the NearBlocks daily series and DefiLlama's NEAR Intents series up to that day, and reads the protocol's inflation parameters, the total supply and the Intents buyback wallet from an archival node *at that block*. Re-reading the same block always returns the same values.
+**1. Pin.** A run picks a day (`asOf`, the newest UTC day that is at least 3 days old, so the sources have settled) and a NEAR mainnet block. It fetches the NearBlocks daily series and DefiLlama's NEAR Intents series up to that day (from the NearBlocks API v3 switch on, the L1 days already in the previous anchored run come from that run's file, checked against its hash on NEAR, and only the newer days are fetched; see [docs/SOURCES-V3.md](docs/SOURCES-V3.md)), and reads the protocol's inflation parameters, the total supply and the Intents buyback wallet from an archival node *at that block*. Re-reading the same block always returns the same values.
 
 **2. Normalize and hash.** Raw responses become plain rows with exact units (yoctoNEAR is converted with integer arithmetic, dollars are rounded to cents). The snapshot is serialized as canonical JSON (sorted keys, no whitespace) and hashed with SHA-256 through WebCrypto, which gives identical bytes in Node and in every browser.
 
@@ -134,10 +134,10 @@ Aggregators keep filling in recent days. On 13 Nov 2026 DefiLlama raised the 12 
 
 | Metric | Source and field | Formula |
 |---|---|---|
-| Active accounts, transactions | NearBlocks `/v1/charts`: `active_accounts`, `txns` | 30-day average; peak = highest 30-day average since Jan 2024 |
-| L1 gas fees | NearBlocks `txn_fee_usd`, `txn_fee` | 30-day sum |
-| New NEAR issued | NearBlocks `total_supply` | Day-on-day change in total supply (already net of burned gas) |
-| Value of new NEAR | NearBlocks `total_supply`, `near_price` | Σ (new NEAR that day × that day's price) |
+| Active accounts, transactions | NearBlocks `/v1/charts`: `active_accounts`, `txns`; from API v3, `/address-stats` `active_accounts − meta_accounts` and `/txn-stats` `txns` | 30-day average; peak = highest 30-day average since Jan 2024 |
+| L1 gas fees | NearBlocks `txn_fee_usd`, `txn_fee`; from API v3, `/txn-stats` `txn_fee` × that day's price | 30-day sum |
+| New NEAR issued | NearBlocks `total_supply` (v3: `/block-stats`) | Day-on-day change in total supply (already net of burned gas) |
+| Value of new NEAR | NearBlocks `total_supply`, `near_price` (v3: `/price-stats`) | Σ (new NEAR that day × that day's price) |
 | Intents volume, fees, revenue | DefiLlama `near-intents` dailyVolume, dailyFees, dailyRevenue | 30- and 90-day sums |
 | **Coverage** | the two above | Intents revenue ÷ value of new NEAR |
 | Breakeven volume | the two above | (value of new NEAR per day) ÷ (revenue ÷ volume) |
