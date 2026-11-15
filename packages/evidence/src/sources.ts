@@ -3,10 +3,13 @@
  * Every source is free and needs no key or account, so anyone can re-run this.
  */
 import type { ChainFacts, IntentsDay, L1Day, ProtocolAt, Snapshot } from "./types.js";
-import { canonical } from "./canonical.js";
+import { canonical, hashOf } from "./canonical.js";
 
 export const SOURCES = {
+  /** NearBlocks API v1 daily stats: every L1 row of a snapshot@1 run. Switched off on NEARBLOCKS_V1_OFF. */
   nearblocksDaily: "https://api.nearblocks.io/v1/charts",
+  /** NearBlocks API v3: `/txn-stats`, `/address-stats`, `/block-stats` and `/price-stats` replace `/v1/charts`. */
+  nearblocksV3: "https://api.nearblocks.io/v3",
   intentsVolume: "https://api.llama.fi/summary/dexs/near-intents?dataType=dailyVolume",
   intentsFees: "https://api.llama.fi/summary/fees/near-intents?dataType=dailyFees",
   intentsRevenue: "https://api.llama.fi/summary/fees/near-intents?dataType=dailyRevenue",
@@ -25,6 +28,8 @@ export const L1_START = "2024-01-01";
 /** A block from before the 2025 inflation change (protocol 79). */
 export const BLOCK_BEFORE_INFLATION_CUT = 165_000_000;
 export const BUYBACK_ACCOUNT = "buybacks.multisignature.near";
+/** The day NearBlocks switches API v1 off (https://api.nearblocks.io/api-docs/migration). */
+export const NEARBLOCKS_V1_OFF = "2026-11-22";
 
 const YOCTO = 10n ** 24n;
 
@@ -93,19 +98,152 @@ export function normalizeIntents(volumeRaw: any, feesRaw: any, revenueRaw: any, 
     .map((d) => ({ d, volume: vol.get(d)!, fees: fees.get(d) ?? null, revenue: rev.get(d) ?? null }));
 }
 
+/** The four NearBlocks API v3 daily endpoints that together replace `/v1/charts`. */
+export const V3_ENDPOINTS = ["txn-stats", "address-stats", "block-stats", "price-stats"] as const;
+export type V3Endpoint = (typeof V3_ENDPOINTS)[number];
+
+/** A NEAR amount written as a decimal string ("1099.7401706679603245") → NEAR with 6 decimals, cut exactly like yoctoToNear6. */
+export function nearToNear6(s: string): number {
+  const m = /^(\d+)(?:\.(\d*))?$/.exec(String(s).trim());
+  if (!m) throw new Error(`NearBlocks v3: not a NEAR amount: ${s}`);
+  return Number(BigInt(m[1]!) * 1_000_000n + BigInt((m[2] ?? "").padEnd(6, "0").slice(0, 6))) / 1e6;
+}
+
+function v3Rows(raw: unknown, endpoint: V3Endpoint): Map<string, Record<string, unknown>> {
+  const rows = (raw as { data?: unknown } | null)?.data;
+  if (!Array.isArray(rows)) throw new Error(`NearBlocks v3 ${endpoint}: unexpected response (no data array)`);
+  return new Map(rows.map((r: Record<string, unknown>) => [String(r.date).slice(0, 10), r]));
+}
+
+function count(v: unknown, what: string): number {
+  const n = Number(v);
+  if (!Number.isSafeInteger(n) || n < 0) throw new Error(`NearBlocks v3: ${what} is not a count (${String(v)})`);
+  return n;
+}
+
+/**
+ * NearBlocks API v3 daily stats → L1 rows for every day after `after` through `through`, joined by date.
+ * Transactions, supply and price are the same numbers v1 gave. `active` is `active_accounts − meta_accounts`
+ * (see L1Day), and fees in USD are fee × that day's price, because v3 has no `txn_fee_usd`.
+ * A day missing from any endpoint stops the run: we never fill a gap.
+ */
+export function normalizeNearblocksV3(raw: Record<V3Endpoint, unknown>, after: string, through: string): L1Day[] {
+  const txns = v3Rows(raw["txn-stats"], "txn-stats");
+  const addresses = v3Rows(raw["address-stats"], "address-stats");
+  const blocks = v3Rows(raw["block-stats"], "block-stats");
+  const prices = v3Rows(raw["price-stats"], "price-stats");
+  const out: L1Day[] = [];
+  for (let d = addDays(after, 1); d <= through; d = addDays(d, 1)) {
+    const t = txns.get(d);
+    const a = addresses.get(d);
+    const b = blocks.get(d);
+    const p = prices.get(d);
+    if (!t || !a || !b || !p) {
+      const missing = V3_ENDPOINTS.filter((_, i) => ![t, a, b, p][i]);
+      throw new Error(`NearBlocks v3 has no ${missing.join(", ")} row for ${d} yet; try an earlier asOf`);
+    }
+    const feeNear = nearToNear6(String(t.txn_fee));
+    const price = round(Number(p.near_price), 6);
+    if (!(price > 0)) throw new Error(`NearBlocks v3: no NEAR price for ${d}`);
+    out.push({
+      d,
+      txns: count(t.txns, `txns on ${d}`),
+      active: count(a.active_accounts, `active_accounts on ${d}`) - count(a.meta_accounts, `meta_accounts on ${d}`),
+      feeNear,
+      feeUsd: round(feeNear * price, 2),
+      supply: yoctoToNear(String(b.total_supply)),
+      price,
+    });
+  }
+  return out;
+}
+
+/** Whole days from `a` to `b`. */
+export const dayDiff = (a: string, b: string): number => (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000;
+
+/** The most rows one v3 stats call returns. */
+export const V3_MAX_LIMIT = 365;
+
+/**
+ * The v3 query strings that cover every day after `after` through `through`, asked on `today` (UTC).
+ * A stats call returns the newest `limit` days, so one call per endpoint covers any range that starts within
+ * the last year; older days are asked for one `date` at a time. Every 25 rows of `limit` costs one credit of the
+ * keyless rate limit, so a daily run spends four credits.
+ */
+export function v3Queries(after: string, through: string, today: string): string[] {
+  const limit = dayDiff(after, today) + 1;
+  if (limit <= V3_MAX_LIMIT) return [`limit=${limit}`];
+  const out: string[] = [];
+  for (let d = addDays(after, 1); d <= through; d = addDays(d, 1)) out.push(`date=${d}`);
+  return out;
+}
+
+/** NearBlocks API v3 daily stats for every day after `after` through `through`, normalized. Four calls a day's run. */
+export async function fetchNearblocksV3(fetcher: Fetcher, after: string, through: string, today: string): Promise<L1Day[]> {
+  const raw = {} as Record<V3Endpoint, { data: unknown[] }>;
+  for (const e of V3_ENDPOINTS) {
+    const data: unknown[] = [];
+    for (const q of v3Queries(after, through, today)) {
+      const body = await getJsonPatient(fetcher, `${SOURCES.nearblocksV3}/${e}?${q}`);
+      if (!Array.isArray(body?.data)) throw new Error(`NearBlocks v3 ${e}: unexpected response (no data array)`);
+      data.push(...body.data);
+    }
+    raw[e] = { data };
+  }
+  return normalizeNearblocksV3(raw, after, through);
+}
+
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
+
+class HttpError extends Error {
+  constructor(
+    readonly url: string,
+    readonly status: number,
+  ) {
+    super(`${url} answered HTTP ${status}`);
+  }
+}
+
+/** A source that answers 404 or 410 is gone; asking again will not help. */
+const gone = (e: unknown) => e instanceof HttpError && (e.status === 404 || e.status === 410);
 
 async function getJson(fetcher: Fetcher, url: string, init?: RequestInit, tries = 3): Promise<any> {
   let last: unknown;
   for (let i = 0; i < tries; i++) {
     try {
       const res = await fetcher(url, init);
-      if (!res.ok) throw new Error(`${url} answered HTTP ${res.status}`);
+      if (!res.ok) throw new HttpError(url, res.status);
       return await res.json();
     } catch (e) {
       last = e;
+      if (gone(e)) break;
       await new Promise((r) => setTimeout(r, 800 * (i + 1)));
     }
+  }
+  throw last instanceof Error ? last : new Error(String(last));
+}
+
+/** Thrown when NearBlocks API v1 no longer answers: snapshot@1 runs can't re-fetch their L1 rows after NEARBLOCKS_V1_OFF. */
+export class NearblocksV1Gone extends Error {}
+
+/**
+ * Like getJson, but waits out NearBlocks' keyless rate limit: on HTTP 429 it waits for Retry-After (or 20 s, then
+ * 40 s, then 60 s) before asking again.
+ */
+async function getJsonPatient(fetcher: Fetcher, url: string, tries = 4): Promise<any> {
+  let last: unknown;
+  for (let i = 0; i < tries; i++) {
+    let wait = 800 * (i + 1);
+    try {
+      const res = await fetcher(url);
+      if (res.ok) return await res.json();
+      last = new HttpError(url, res.status);
+      if (res.status === 429) wait = (Number(res.headers?.get("retry-after")) || 20 * (i + 1)) * 1000;
+    } catch (e) {
+      last = e;
+    }
+    if (gone(last) || i === tries - 1) break;
+    await new Promise((r) => setTimeout(r, wait));
   }
   throw last instanceof Error ? last : new Error(String(last));
 }
@@ -168,8 +306,30 @@ export interface FetchOptions {
   asOf?: string;
   /** Re-read the chain at this block instead of the latest one. */
   pinnedBlock?: number;
+  /**
+   * The anchored snapshot to build on. Its L1 rows are kept exactly as they are (without `newAccounts`) and only
+   * the days after its `asOf` are fetched, from NearBlocks API v3; the result is a snapshot@2 that names its base
+   * by hash. Without a base every L1 row comes from NearBlocks API v1, which answers until NEARBLOCKS_V1_OFF.
+   */
+  base?: Snapshot;
   fetcher?: Fetcher;
   onProgress?: (step: string) => void;
+  /** Today's UTC date (YYYY-MM-DD), which decides the v3 requests. Defaults to the clock. */
+  today?: string;
+}
+
+/** A row as a snapshot@2 keeps it: NearBlocks API v3 has no new-accounts count. */
+const v2Row = (r: L1Day): L1Day => ({ d: r.d, txns: r.txns, active: r.active, feeNear: r.feeNear, feeUsd: r.feeUsd, supply: r.supply, price: r.price });
+
+async function fetchIntents(fetcher: Fetcher, asOf: string): Promise<IntentsDay[]> {
+  const [vol, fees, rev] = await Promise.all([
+    getJson(fetcher, SOURCES.intentsVolume),
+    getJson(fetcher, SOURCES.intentsFees),
+    getJson(fetcher, SOURCES.intentsRevenue),
+  ]);
+  const intents = normalizeIntents(vol, fees, rev, asOf);
+  if (intents.at(-1)?.d !== asOf) throw new Error(`DefiLlama has no NEAR Intents row for ${asOf} yet; try an earlier asOf`);
+  return intents;
 }
 
 /** Fetches every source and returns a normalized snapshot. */
@@ -177,21 +337,66 @@ export async function fetchSnapshot(opts: FetchOptions = {}): Promise<Snapshot> 
   const fetcher: Fetcher = opts.fetcher ?? ((u, i) => globalThis.fetch(u, i));
   const asOf = opts.asOf ?? settledDay();
   const say = opts.onProgress ?? (() => {});
-  say("NearBlocks daily stats");
-  const nb = await getJson(fetcher, SOURCES.nearblocksDaily);
+  const { base } = opts;
+  let l1: L1Day[];
+  if (base) {
+    if (base.asOf >= asOf) throw new Error(`the base snapshot ends on ${base.asOf}; a run built on it must end after that day, not on ${asOf}`);
+    if (base.l1.at(-1)?.d !== base.asOf) throw new Error(`the base snapshot's L1 rows do not end on its asOf (${base.asOf})`);
+    say(`NearBlocks API v3 daily stats after ${base.asOf} (earlier days from the ${base.asOf} snapshot)`);
+    const fresh = await fetchNearblocksV3(fetcher, base.asOf, asOf, opts.today ?? new Date().toISOString().slice(0, 10));
+    l1 = [...base.l1.map(v2Row), ...fresh];
+  } else {
+    say("NearBlocks API v1 daily stats");
+    const nb = await getJson(fetcher, SOURCES.nearblocksDaily).catch((e) => {
+      throw gone(e) ? new NearblocksV1Gone(`NearBlocks API v1 no longer answers (switched off on ${NEARBLOCKS_V1_OFF})`) : e;
+    });
+    l1 = normalizeNearblocks(nb, asOf);
+    if (l1.at(-1)?.d !== asOf) throw new Error(`NearBlocks has no row for ${asOf} yet; try an earlier asOf`);
+  }
   say("DefiLlama: NEAR Intents volume, fees, revenue");
-  const [vol, fees, rev] = await Promise.all([
-    getJson(fetcher, SOURCES.intentsVolume),
-    getJson(fetcher, SOURCES.intentsFees),
-    getJson(fetcher, SOURCES.intentsRevenue),
-  ]);
+  const intents = await fetchIntents(fetcher, asOf);
   say("NEAR archival RPC: supply, protocol inflation, buyback wallet");
   const chain = await fetchChainFacts(fetcher, opts.pinnedBlock);
-  const l1 = normalizeNearblocks(nb, asOf);
-  const intents = normalizeIntents(vol, fees, rev, asOf);
-  if (l1.at(-1)?.d !== asOf) throw new Error(`NearBlocks has no row for ${asOf} yet; try an earlier asOf`);
-  if (intents.at(-1)?.d !== asOf) throw new Error(`DefiLlama has no NEAR Intents row for ${asOf} yet; try an earlier asOf`);
+  if (base) return { schema: "nearbreakeven/snapshot@2", asOf, l1Base: { asOf: base.asOf, sha256: await hashOf(base) }, l1, intents, chain };
   return { schema: "nearbreakeven/snapshot@1", asOf, l1, intents, chain };
+}
+
+export interface RefetchOptions {
+  /** Reads the pinned snapshot of an earlier run (data/snapshots/<asOf>/snapshot.json). */
+  loadBase: (asOf: string) => Promise<Snapshot>;
+  fetcher?: Fetcher;
+  onProgress?: (step: string) => void;
+}
+
+/**
+ * Asks the live sources again for a pinned snapshot's day and block, building it the way it was built, for the
+ * data check (`pnpm verify`, `pnpm drift`, the browser re-run). A snapshot@2 is rebuilt on its own base, whose
+ * hash must still match. A snapshot@1 is rebuilt from NearBlocks API v1; once v1 is switched off its L1 rows are
+ * taken from the pinned file instead, DefiLlama and the chain are still asked, and `notes` says so.
+ */
+export async function refetchLike(pinned: Snapshot, opts: RefetchOptions): Promise<{ fresh: Snapshot; notes: string[] }> {
+  const same = { asOf: pinned.asOf, pinnedBlock: pinned.chain.block, fetcher: opts.fetcher, onProgress: opts.onProgress };
+  if (pinned.schema === "nearbreakeven/snapshot@2") {
+    const base = await opts.loadBase(pinned.l1Base.asOf);
+    const sha = await hashOf(base);
+    if (sha !== pinned.l1Base.sha256) throw new Error(`the ${pinned.l1Base.asOf} snapshot hashes to ${sha}, not to this run's base ${pinned.l1Base.sha256}`);
+    return { fresh: await fetchSnapshot({ ...same, base }), notes: [] };
+  }
+  try {
+    return { fresh: await fetchSnapshot(same), notes: [] };
+  } catch (e) {
+    if (!(e instanceof NearblocksV1Gone)) throw e;
+    const fetcher: Fetcher = opts.fetcher ?? ((u, i) => globalThis.fetch(u, i));
+    const say = opts.onProgress ?? (() => {});
+    say("DefiLlama: NEAR Intents volume, fees, revenue");
+    const intents = await fetchIntents(fetcher, pinned.asOf);
+    say("NEAR archival RPC: supply, protocol inflation, buyback wallet");
+    const chain = await fetchChainFacts(fetcher, pinned.chain.block);
+    return {
+      fresh: { ...pinned, intents, chain },
+      notes: [`NearBlocks switched API v1 off on ${NEARBLOCKS_V1_OFF}, so this run's NearBlocks rows were not asked again; DefiLlama and the chain were.`],
+    };
+  }
 }
 
 /** One value a source changed after a snapshot was pinned. */

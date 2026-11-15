@@ -52,6 +52,11 @@ export function loadPinnedSnapshot(latest: Latest) {
   return getJson<Snapshot>(dataUrl(latest.snapshot));
 }
 
+/** The pinned snapshot of the run for a day, as committed under data/snapshots/. */
+export function loadSnapshotFor(asOf: string) {
+  return getJson<Snapshot>(dataUrl(`snapshots/${asOf}/snapshot.json`));
+}
+
 export async function loadLedger(): Promise<{ runs: ChainRun[]; attestations: ChainAttestation[] }> {
   const runs = await viewLedger<ChainRun[]>("list_runs", { limit: 20 });
   const latest = runs[0];

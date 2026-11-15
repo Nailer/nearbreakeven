@@ -180,7 +180,7 @@ export function Footer({ results }: { results?: Results }) {
         </div>
         <div>
           <h4>Data</h4>
-          <a href="https://api.nearblocks.io/v1/charts" target="_blank" rel="noreferrer">
+          <a href="https://api.nearblocks.io/api-docs" target="_blank" rel="noreferrer">
             NearBlocks daily stats
           </a>
           <a href="https://defillama.com/protocol/near-intents" target="_blank" rel="noreferrer">

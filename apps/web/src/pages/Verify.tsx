@@ -6,15 +6,15 @@ import {
   type Results,
   computeResults,
   diffSnapshots,
-  fetchSnapshot,
   hashOf,
+  refetchLike,
   txUrl,
   viewLedger,
 } from "@nearbreakeven/evidence";
 import { useEffect, useState } from "react";
 import { Hash, useToast, VerdictMark } from "../components/parts";
 import { LedgerFeed } from "../components/LedgerFeed";
-import { type Latest, loadPinnedSnapshot, pct } from "../lib/data";
+import { type Latest, loadPinnedSnapshot, loadSnapshotFor, pct } from "../lib/data";
 import { WALLETS } from "../lib/wallets";
 
 /** The wallet libraries are large; load them only on this page, when needed. */
@@ -23,7 +23,7 @@ const walletLib = () => import("../lib/wallet");
 type Step = { label: string; state: "todo" | "doing" | "done" | "failed"; detail?: string };
 
 /** What the public sources say today about the same day and block. */
-type DataCheck = { state: "clean" } | { state: "drift"; drift: Drift[]; live: Results } | { state: "unreachable"; error: string };
+type DataCheck = { state: "clean"; notes: string[] } | { state: "drift"; drift: Drift[]; live: Results; notes: string[] } | { state: "unreachable"; error: string };
 
 interface Outcome {
   run: ChainRun;
@@ -103,9 +103,9 @@ export function Verify({ latest }: { latest: Latest }) {
       set(3, { state: "doing", detail: "Starting" });
       let data: DataCheck;
       try {
-        const fresh = await fetchSnapshot({ asOf: chainRun.as_of, pinnedBlock: chainRun.source_block, onProgress: (s) => set(3, { detail: s }) });
+        const { fresh, notes } = await refetchLike(pinned, { loadBase: loadSnapshotFor, onProgress: (s) => set(3, { detail: s }) });
         const drift = diffSnapshots(pinned, fresh);
-        data = drift.length === 0 ? { state: "clean" } : { state: "drift", drift, live: await computeResults(fresh) };
+        data = drift.length === 0 ? { state: "clean", notes } : { state: "drift", drift, live: await computeResults(fresh), notes };
         set(3, {
           state: "done",
           detail:
@@ -147,7 +147,7 @@ export function Verify({ latest }: { latest: Latest }) {
         run_id: outcome.run.id,
         snapshot_sha256: outcome.snapshotSha256,
         results_sha256: outcome.resultsSha256,
-        method: outcome.data.state === "clean" ? "live" : "snapshot",
+        method: outcome.data.state === "clean" && outcome.data.notes.length === 0 ? "live" : "snapshot",
         note: note.trim() || undefined,
       });
       setTxHash(hash);
@@ -318,6 +318,14 @@ const cell = (field: string, v: string) =>
 
 /** The second check: have the public sources changed the data since the run was pinned? */
 function DataCheckNote({ run, results, data }: { run: ChainRun; results: Results; data: DataCheck }) {
+  if (data.state === "clean" && data.notes.length > 0) {
+    return (
+      <div className="datacheck datacheck--clean">
+        <h3>The sources asked again agree</h3>
+        <p>{data.notes.join(" ")}</p>
+      </div>
+    );
+  }
   if (data.state === "clean") {
     return (
       <div className="datacheck datacheck--clean">
@@ -346,6 +354,7 @@ function DataCheckNote({ run, results, data }: { run: ChainRun; results: Results
         Aggregators keep filling in recent days after the fact. The anchored run keeps the data it was computed from; this is what changed since. On
         today's data the verdict is <b>{data.live.verdict}</b> and 30-day coverage is <b>{pct(after, 2)}</b> (anchored {pct(before, 2)}).
       </p>
+      {data.notes.length > 0 && <p className="muted">{data.notes.join(" ")}</p>}
       <table>
         <thead>
           <tr>

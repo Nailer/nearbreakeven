@@ -4,10 +4,14 @@ export interface L1Day {
   d: string;
   /** Transactions that day. */
   txns: number;
-  /** Accounts that signed or received a transaction that day. */
+  /**
+   * NearBlocks' daily active accounts. From API v3 it is `active_accounts − meta_accounts`: v3's own count also
+   * includes accounts that only sent meta transactions through a relayer, which v1's never did, and the difference
+   * keeps the v1 series (docs/SOURCES-V3.md).
+   */
   active: number;
-  /** Accounts created that day. */
-  newAccounts: number;
+  /** Accounts created that day. Only in snapshot@1 files: NearBlocks API v3 has no such field and no metric uses it. */
+  newAccounts?: number;
   /** Gas fees paid that day, in NEAR (6 decimals). */
   feeNear: number;
   /** Gas fees paid that day, in USD (2 decimals). */
@@ -53,15 +57,31 @@ export interface ChainFacts {
   buybackBalance: number;
 }
 
-/** Everything the metrics are computed from. Its hash is what gets anchored on NEAR. */
-export interface Snapshot {
-  schema: "nearbreakeven/snapshot@1";
+interface SnapshotFields {
   /** Last full UTC day included. */
   asOf: string;
   l1: L1Day[];
   intents: IntentsDay[];
   chain: ChainFacts;
 }
+
+/** Every L1 row from NearBlocks API v1 (`/v1/charts`), as run #0 was built. */
+export interface SnapshotV1 extends SnapshotFields {
+  schema: "nearbreakeven/snapshot@1";
+}
+
+/**
+ * From the NearBlocks API v3 switch on: the L1 rows up to `l1Base.asOf` are copied unchanged from that anchored
+ * snapshot, whose hash is `l1Base.sha256`, and only the later days come from NearBlocks API v3. Each run so
+ * names the one before it, back to run #0.
+ */
+export interface SnapshotV2 extends SnapshotFields {
+  schema: "nearbreakeven/snapshot@2";
+  l1Base: { asOf: string; sha256: string };
+}
+
+/** Everything the metrics are computed from. Its hash is what gets anchored on NEAR. */
+export type Snapshot = SnapshotV1 | SnapshotV2;
 
 export interface Claim {
   id: "C1" | "C2" | "C3" | "C4";

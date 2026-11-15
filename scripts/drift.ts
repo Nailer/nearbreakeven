@@ -7,14 +7,16 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Snapshot, diffSnapshots, fetchSnapshot } from "@nearbreakeven/evidence";
+import { type Snapshot, diffSnapshots, refetchLike } from "@nearbreakeven/evidence";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const i = process.argv.indexOf("--as-of");
 const latest = JSON.parse(readFileSync(join(root, "data", "latest.json"), "utf8")) as { asOf: string };
 const asOf = i > 0 ? process.argv[i + 1] : latest.asOf;
-const pinned = JSON.parse(readFileSync(join(root, "data", "snapshots", asOf, "snapshot.json"), "utf8")) as Snapshot;
-const fresh = await fetchSnapshot({ asOf, pinnedBlock: pinned.chain.block });
+const readSnapshot = async (day: string) => JSON.parse(readFileSync(join(root, "data", "snapshots", day, "snapshot.json"), "utf8")) as Snapshot;
+const pinned = await readSnapshot(asOf);
+const { fresh, notes } = await refetchLike(pinned, { loadBase: readSnapshot });
+for (const n of notes) console.log(`note: ${n}`);
 const changes = diffSnapshots(pinned, fresh);
 if (changes.length === 0) {
   console.log(`no drift: every source still returns the pinned data for ${asOf}`);

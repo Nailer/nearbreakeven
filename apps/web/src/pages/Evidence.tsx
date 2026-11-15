@@ -1,4 +1,4 @@
-import { BLOCK_BEFORE_INFLATION_CUT, type Results, SOURCES, type Snapshot } from "@nearbreakeven/evidence";
+import { BLOCK_BEFORE_INFLATION_CUT, type Results, SOURCES, SOURCE_DOCS, type Snapshot } from "@nearbreakeven/evidence";
 import type { ReactNode } from "react";
 import { Chart, type Series } from "../components/Chart";
 import { Hash, Spinner } from "../components/parts";
@@ -64,8 +64,8 @@ export function Evidence({ results, latest }: { results: Results; latest: Latest
           <Figure
             title="Active accounts fell 97% from the peak"
             says={`From ${compact(m.l1.activePeakAvg30)} a day (30 days to ${m.l1.activePeakEnd}) to ${compact(m.l1.activeAvg30)} a day in the last 30 days.`}
-            how="Monthly average of NearBlocks' daily active accounts. The peak is the highest 30-day average since January 2024."
-            source={ext(SOURCES.nearblocksDaily, "NearBlocks /v1/charts, field active_accounts")}
+            how="Monthly average of NearBlocks' daily active accounts (from API v3: active_accounts minus meta_accounts, which keeps v1's count). The peak is the highest 30-day average since January 2024."
+            source={ext(SOURCE_DOCS.nearblocksDaily, "NearBlocks daily stats: v1 /charts active_accounts, then v3 /address-stats")}
             code="packages/evidence/src/metrics.ts"
           >
             <Chart ariaLabel="Active accounts per day, monthly average" labels={labels} series={[line("Active accounts a day", "var(--ink-2)", months.map((x) => x.activeAvg))]} format={compact} />
@@ -75,7 +75,7 @@ export function Evidence({ results, latest }: { results: Results; latest: Latest
             title="Transactions fell with them"
             says={`${compact(m.l1.txnsAvg30)} a day in the last 30 days, ${Math.abs(m.l1.txnsChangePct)}% below the highest 30-day average.`}
             how="Monthly average of daily transactions."
-            source={ext(SOURCES.nearblocksDaily, "NearBlocks /v1/charts, field txns")}
+            source={ext(SOURCE_DOCS.nearblocksDaily, "NearBlocks daily stats: v1 /charts txns, then v3 /txn-stats")}
             code="packages/evidence/src/metrics.ts"
           >
             <Chart ariaLabel="Transactions per day, monthly average" labels={labels} series={[line("Transactions a day", "var(--ink-2)", months.map((x) => x.txnsAvg))]} format={compact} />
@@ -85,7 +85,7 @@ export function Evidence({ results, latest }: { results: Results; latest: Latest
             title="The price did not follow activity"
             says={`Correlation of month-on-month changes in active accounts and price over the last 12 complete months: r = ${m.decoupling.corrActivePrice12m}.`}
             how="Pearson correlation of the monthly % change in average active accounts against the monthly % change in average price, over the last 12 complete months."
-            source={ext(SOURCES.nearblocksDaily, "NearBlocks /v1/charts, field near_price")}
+            source={ext(SOURCE_DOCS.nearblocksDaily, "NearBlocks daily stats: v1 /charts near_price, then v3 /price-stats")}
             code="packages/evidence/src/metrics.ts"
           >
             <Chart ariaLabel="NEAR price, monthly average" labels={labels} series={[line("NEAR price", "var(--issuance)", months.map((x) => x.priceAvg))]} format={(v) => `$${v.toFixed(2)}`} />
@@ -94,10 +94,10 @@ export function Evidence({ results, latest }: { results: Results; latest: Latest
           <Figure
             title="Intents earns far more than L1 gas"
             says={`Last 30 days: ${usd(m.intents.revenue30)} of Intents revenue against ${usd(m.l1.gasFeesUsd30)} of L1 gas, ${m.breakeven.revenueMultiple}×.`}
-            how="Monthly sums. Intents revenue is DefiLlama's dailyRevenue for NEAR Intents (what NEAR keeps after partner payouts); gas is NearBlocks' txn_fee_usd."
+            how="Monthly sums. Intents revenue is DefiLlama's dailyRevenue for NEAR Intents (what NEAR keeps after partner payouts); gas is NearBlocks' txn_fee_usd (from API v3: txn_fee × that day's price)."
             source={
               <>
-                {ext(SOURCES.intentsRevenue, "DefiLlama near-intents dailyRevenue")}, {ext(SOURCES.nearblocksDaily, "NearBlocks txn_fee_usd")}
+                {ext(SOURCES.intentsRevenue, "DefiLlama near-intents dailyRevenue")}, {ext(SOURCE_DOCS.nearblocksDaily, "NearBlocks gas fees")}
               </>
             }
             code="packages/evidence/src/metrics.ts"
@@ -132,7 +132,7 @@ export function Evidence({ results, latest }: { results: Results; latest: Latest
             title="Issuance was halved at the end of October 2025"
             says={`About ${compact(m.supply.issuanceNear30)} new NEAR in the last 30 days, ${m.supply.annualizedRatePct.toFixed(2)}% a year. Before the cut, about twice that.`}
             how="Monthly sum of the day-on-day change in total supply. It already nets out burned gas."
-            source={ext(SOURCES.nearblocksDaily, "NearBlocks /v1/charts, field total_supply")}
+            source={ext(SOURCE_DOCS.nearblocksDaily, "NearBlocks daily stats: v1 /charts total_supply, then v3 /block-stats")}
             code="packages/evidence/src/metrics.ts"
           >
             <Chart

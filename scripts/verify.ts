@@ -22,8 +22,8 @@ import {
   type Snapshot,
   computeResults,
   diffSnapshots,
-  fetchSnapshot,
   hashOf,
+  refetchLike,
   txUrl,
   viewLedger,
 } from "@nearbreakeven/evidence";
@@ -37,6 +37,8 @@ const arg = (name: string) => {
 const codeOnly = process.argv.includes("--snapshot");
 const runArg = arg("run");
 const mark = (ok: boolean) => (ok ? "MATCH" : "DIFFERENT");
+
+const readSnapshot = async (asOf: string) => JSON.parse(readFileSync(join(root, "data", "snapshots", asOf, "snapshot.json"), "utf8")) as Snapshot;
 
 const run = runArg === undefined ? await viewLedger<ChainRun | null>("latest_run") : await viewLedger<ChainRun | null>("get_run", { run_id: Number(runArg) });
 if (!run) throw new Error("no run on the ledger yet");
@@ -60,11 +62,16 @@ console.log(`   verdict  ${results.verdict}\n`);
 let liveClean = false;
 if (!codeOnly) {
   console.log("2. data check: the public sources today, same day, same NEAR block");
-  const fresh = await fetchSnapshot({ asOf: run.as_of, pinnedBlock: run.source_block, onProgress: (s) => console.log(`   fetching ${s}`) });
+  const { fresh, notes } = await refetchLike(pinned, { loadBase: readSnapshot, onProgress: (s) => console.log(`   fetching ${s}`) });
+  for (const n of notes) console.log(`   note: ${n}`);
   const drift = diffSnapshots(pinned, fresh);
-  liveClean = drift.length === 0;
-  if (liveClean) {
-    console.log("   no drift: every source still returns the pinned data, so a live re-run gives the same hashes");
+  liveClean = drift.length === 0 && notes.length === 0;
+  if (drift.length === 0) {
+    console.log(
+      notes.length === 0
+        ? "   no drift: every source still returns the pinned data, so a live re-run gives the same hashes"
+        : "   no drift in the sources asked again",
+    );
   } else {
     const live = await computeResults(fresh);
     const before = results.metrics.breakeven.coverage30;
