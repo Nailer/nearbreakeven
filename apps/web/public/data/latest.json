@@ -1,9 +1,9 @@
 {
-  "asOf": "2026-11-12",
-  "block": 224351751,
-  "snapshotSha256": "784a00b915b0fd20b1c06abc6f826408f68e367b1d8dec7f23d247548c053be3",
-  "resultsSha256": "7ef91d4c95a119a3a5c081e768d14fc66ef97029d356c76d5761043b6357f179",
+  "asOf": "2026-11-13",
+  "block": 224813843,
+  "snapshotSha256": "887d1b58b5ee0f7d5c48f7ef1b47a33e106374309d5930f7a0ee5bbd8a6be4c1",
+  "resultsSha256": "d6fce8728031398e2eb170dfaaa8aa77980292fbf10eb242fb84c94b7d48d893",
   "verdict": "HOLDS",
-  "snapshot": "snapshots/2026-11-12/snapshot.json",
-  "results": "snapshots/2026-11-12/results.json"
+  "snapshot": "snapshots/2026-11-13/snapshot.json",
+  "results": "snapshots/2026-11-13/results.json"
 }
